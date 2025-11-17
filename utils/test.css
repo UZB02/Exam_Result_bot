@@ -1,0 +1,8 @@
+body{
+    background: orange;
+}
+  tbody tr:nth-child(2) td {
+          background-color: green;
+          color: white;
+          font-weight: bold;
+        }
