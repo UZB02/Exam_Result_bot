@@ -1,8 +1,168 @@
-body{
-    background: orange;
-}
-  tbody tr:nth-child(2) td {
-          background-color: green;
-          color: white;
-          font-weight: bold;
+// controllers/adminController.js
+const Group = require("./models/Group.js");
+const { getSheetData } = require("./googleService.js");
+const {
+  generateImageFromSheetData,
+  deleteImage,
+} = require("./utils/imageGenerator.js");
+
+// 🔥 Bir nechta adminlarni qo‘llab-quvvatlash
+const ADMIN_IDS = process.env.ADMIN_IDS
+  ? process.env.ADMIN_IDS.split(",").map((id) => id.trim())
+  : [];
+
+module.exports = (bot) => {
+  //-----------------------------------
+  //   /start → Admin menyusi
+  //-----------------------------------
+  bot.onText(/\/start/, (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id.toString();
+
+    if (ADMIN_IDS.includes(userId)) {
+      bot.sendMessage(
+        chatId,
+        "Assalomu alaykum, Admin!\nQuyidagi menyudan buyruq tanlang:",
+        {
+          reply_markup: {
+            keyboard: [
+              [{ text: "📤 Natijalarni yuborish" }],
+              [{ text: "📢 Barcha guruhlarga xabar yuborish" }], // 🔥 Yangi tugma
+            ],
+            resize_keyboard: true,
+          },
         }
+      );
+    } else {
+      bot.sendMessage(chatId, "Assalomu alaykum! Botga xush kelibsiz.");
+    }
+  });
+
+  //-----------------------------------
+  //  📤 Natijalarni yuborish (hamma sinfga)
+  //-----------------------------------
+  bot.on("message", (msg) => {
+    if (msg.text === "📤 Natijalarni yuborish") {
+      const userId = msg.from.id.toString();
+
+      if (!ADMIN_IDS.includes(userId)) {
+        return bot.sendMessage(msg.chat.id, "Bu amal faqat admin uchun!");
+      }
+
+      bot.emit("send_results_command", msg);
+    }
+  });
+
+  bot.on("send_results_command", async (msg) => {
+    const userId = msg.from.id.toString();
+
+    if (!ADMIN_IDS.includes(userId)) {
+      return bot.sendMessage(msg.chat.id, "Faqat admin yubora oladi!");
+    }
+
+    const groups = await Group.find();
+
+    for (const group of groups) {
+      try {
+        const sheetData = await getSheetData(group.name);
+        const imagePath = await generateImageFromSheetData(
+          sheetData,
+          group.name
+        );
+
+        await bot.sendPhoto(group.chatId, imagePath, {
+          caption: `📊 ${group.name} Assalomu alaykum hurmatli ota-onalar 1-chorak 15.11.2025 kungi haftalik imtihon natijalarimiz bilan tanishib olishingiz mumkin!  
+
+ 🔴 Ballari qizil rang bilan belgilangan o'quvchilar fanlar bo'yicha sinfda eng yuqori ballni qo'lga kiritganlar.
+
+👨‍🏫 Barcha tengdoshlariga na'muna bo'lgan 1-o'rin soxibimizning ustozlariga hamda ota-onalariga o'z minnatdorchiligimizni bildiramiz!`,
+        });
+
+        await deleteImage(imagePath);
+      } catch (err) {
+        console.error(err);
+        await bot.sendMessage(
+          group.chatId,
+          "❌ Natijalarni yuborishda xatolik yuz berdi."
+        );
+      }
+    }
+
+    bot.sendMessage(msg.chat.id, "✅ Barcha sinflarga natijalar yuborildi!");
+  });
+
+  // ================================================================
+  // 🆕 Yangi funksiya: Admin barcha guruhlarga xohlanyan fayl/xabar yuboradi
+  // ================================================================
+  let broadcastMode = false;
+
+  bot.on("message", async (msg) => {
+    const userId = msg.from.id.toString();
+
+    // Tugma bosilganda broadcast rejim yoqiladi
+    if (msg.text === "📢 Barcha guruhlarga xabar yuborish") {
+      if (!ADMIN_IDS.includes(userId)) {
+        return bot.sendMessage(msg.chat.id, "Bu amal faqat admin uchun!");
+      }
+
+      broadcastMode = true;
+      return bot.sendMessage(
+        msg.chat.id,
+        "📢 Yubormoqchi bo'lgan xabar yoki faylni yuboring.\n\n*Diqqat:* Bu xabar barcha guruhlarga ketadi!",
+        { parse_mode: "Markdown" }
+      );
+    }
+
+    // Admin fayl yoki matn yuborsa → barcha guruhlarga tarqatiladi
+    if (broadcastMode && ADMIN_IDS.includes(userId)) {
+      broadcastMode = false; // Bir martalik bo'lishi uchun
+
+      const groups = await Group.find();
+
+      for (const group of groups) {
+        try {
+          // Agar rasm bo'lsa
+          if (msg.photo) {
+            const fileId = msg.photo[msg.photo.length - 1].file_id;
+            await bot.sendPhoto(group.chatId, fileId, {
+              caption: msg.caption || "",
+            });
+          }
+          // Agar video bo'lsa
+          else if (msg.video) {
+            await bot.sendVideo(group.chatId, msg.video.file_id, {
+              caption: msg.caption || "",
+            });
+          }
+          // Agar hujjat (PDF, DOC, ZIP...) bo'lsa
+          else if (msg.document) {
+            await bot.sendDocument(group.chatId, msg.document.file_id);
+          }
+          // Agar audio
+          else if (msg.audio) {
+            await bot.sendAudio(group.chatId, msg.audio.file_id);
+          }
+          // Agar voice
+          else if (msg.voice) {
+            await bot.sendVoice(group.chatId, msg.voice.file_id);
+          }
+          // Oddiy matn bo‘lsa
+          else if (msg.text) {
+            await bot.sendMessage(group.chatId, msg.text);
+          }
+        } catch (err) {
+          console.log("Forward xatosi:", err);
+        }
+      }
+
+      return bot.sendMessage(
+        msg.chat.id,
+        "✅ Xabar barcha guruhlarga yuborildi!"
+      );
+    }
+  });
+};
+
+tbody{
+    text-align: center;
+}
