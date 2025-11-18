@@ -80,23 +80,24 @@ module.exports = (bot) => {
 
     for (const group of groups) {
       try {
+        console.log("📌 SINFDAN MA'LUMOT OLINYAPTI:", group.name);
+
         const sheetData = await getSheetData(group.name);
+        console.log("📌 GoogleSheetdan keldi:", sheetData?.length);
+
         const imagePath = await generateImageFromSheetData(
           sheetData,
           group.name
         );
+        console.log("📌 Rasm yaratildi:", imagePath);
 
         await bot.sendPhoto(group.chatId, imagePath, {
-          caption: `
-📊 ${group.name} sinfi natijalari!
-
-🔴 Qizil rangdagi o'quvchilar — eng yuqori ball egalaridir.
-          `,
+          caption: `📊 ${group.name} sinfi natijalari!`,
         });
 
         await deleteImage(imagePath);
       } catch (err) {
-        console.error(err);
+        console.error("❌ XATOLIK:", err.message);
         await bot.sendMessage(
           group.chatId,
           "❌ Natijalarni yuborishda xatolik yuz berdi."
@@ -106,6 +107,7 @@ module.exports = (bot) => {
 
     bot.sendMessage(msg.chat.id, "✅ Barcha sinflarga natijalar yuborildi!");
   });
+
 
   // ================================================================
   // 📢 Barcha guruhlarga xabar/yuklama yuborish
