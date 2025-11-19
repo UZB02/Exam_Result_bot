@@ -1,119 +1,107 @@
+// tableToImageSkia.js
 const { Canvas } = require("skia-canvas");
 const fs = require("fs");
 
-async function generateImageFromSheetData(
-  data,
-  className,
-  subjectEfficiency,
-  classEfficiency
-) {
+async function generateImageFromSheetData(data, className) {
   const header = data[0];
   let rows = data.slice(1);
 
-  // 🔹 Eng yuqori ball bo‘yicha saralash
   const scoreIndex = header.length - 2;
   rows.sort((a, b) => parseFloat(b[scoreIndex]) - parseFloat(a[scoreIndex]));
 
-  // 📌 O‘lchamlar
+  // O'lchamlar
   const width = 1600;
-  const colWidth = (width - 100) / header.length;
   const rowHeight = 50;
   const headerHeight = 60;
-  const titleHeight = 70;
-  const footerHeight = 80;
+  const titleHeight = 80;
+  const footerHeight = 100;
   const height =
     titleHeight + headerHeight + rows.length * rowHeight + footerHeight;
 
   const canvas = new Canvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  // Oq fon
+  // Fon
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  // Title
-  ctx.font = "bold 45px Arial";
+  // Sarlavha
   ctx.fillStyle = "#1a3d7c";
+  ctx.font = "bold 40px Arial";
   ctx.textAlign = "center";
   ctx.fillText(className, width / 2, 50);
 
-  // HEADER FON
+  // Header rectangle
+  const tableX = 50;
+  const tableWidth = width - 100;
+  const colWidth = Math.floor(tableWidth / header.length);
+  const headerY = titleHeight;
+
   ctx.fillStyle = "#b8cee3";
-  ctx.fillRect(50, 80, width - 100, headerHeight);
-
-  // HEADER CHIZIQLARI
+  ctx.fillRect(tableX, headerY, tableWidth, headerHeight);
   ctx.strokeStyle = "#000";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(50, 80, width - 100, headerHeight);
+  ctx.strokeRect(tableX, headerY, tableWidth, headerHeight);
 
-  // HEADER MATNLARI
-  ctx.font = "bold 24px Arial";
+  // Header text
   ctx.fillStyle = "#000";
-  ctx.textAlign = "left";
-
+  ctx.font = "bold 22px Arial";
+  ctx.textAlign = "center";
   header.forEach((h, i) => {
-    ctx.fillText(h, 50 + i * colWidth + 10, 118);
+    const x = tableX + i * colWidth + colWidth / 2;
+    const y = headerY + headerHeight / 2 + 8;
+    ctx.fillText(h, x, y);
   });
 
-  // BODY QATORLARI
+  // Body
+  ctx.font = "22px Arial";
   rows.forEach((row, r) => {
-    const y = 80 + headerHeight + r * rowHeight;
+    const y = headerY + headerHeight + r * rowHeight;
 
-    // 1-o‘rin → SARIQ
+    // 1-o'rin sariq fon
     ctx.fillStyle = r === 0 ? "#ffd54f" : "#ffffff";
-    ctx.fillRect(50, y, width - 100, rowHeight);
+    ctx.fillRect(tableX, y, tableWidth, rowHeight);
 
-    // CHIZIQLAR
+    // chiziq
     ctx.strokeStyle = "#999";
-    ctx.strokeRect(50, y, width - 100, rowHeight);
+    ctx.strokeRect(tableX, y, tableWidth, rowHeight);
 
-    // Matnlar
-    row.forEach((col, c) => {
-      let textColor = "#000";
-      let font = "24px Arial";
-      const value = col.toString();
+    row.forEach((cell, c) => {
+      const x = tableX + c * colWidth + colWidth / 2;
+      const text = cell == null ? "" : String(cell);
 
-      // 50 ball → qizil
-      if (!isNaN(parseFloat(value)) && parseFloat(value) === 50) {
-        textColor = "red";
-        font = "bold 24px Arial";
+      // 50 ball qizil
+      if (!isNaN(text) && parseFloat(text) === 50) {
+        ctx.fillStyle = "red";
+        ctx.font = "bold 22px Arial";
+      } else {
+        ctx.fillStyle = "#000";
+        ctx.font = "22px Arial";
       }
 
-      // 1-o‘rin → qora matn
-      if (r === 0) textColor = "#000";
-
-      ctx.fillStyle = textColor;
-      ctx.font = font;
-      ctx.fillText(value, 50 + c * colWidth + 10, y + rowHeight / 2 + 8);
+      ctx.textAlign = "center";
+      ctx.fillText(text, x, y + rowHeight / 2 + 8);
     });
   });
 
-  // 📊 Pastki statistik ma'lumotlar
-  ctx.font = "bold 22px Arial";
+  // Footer statistikalar
   ctx.fillStyle = "#1a3d7c";
-  const footerY1 = height - 40;
-  const footerY2 = height - 10;
+  ctx.font = "bold 22px Arial";
+  ctx.textAlign = "left";
+  const footerX = tableX;
+  ctx.fillText("Fanlar kesimida samaradorlik (100%)", footerX, height - 40);
+  ctx.fillText("Sinf samaradorligi: 75%", footerX, height - 15);
 
-  ctx.fillText("Fanlar kesimida samaradorlik (100%)", 50, footerY1);
-  subjectEfficiency.forEach((val, i) => {
-    ctx.fillText(val, 500 + i * colWidth, footerY1);
-  });
-
-  ctx.fillText("Sinf samaradorligi (100%)", 50, footerY2);
-  ctx.fillText(classEfficiency, 500, footerY2);
-
-  // Saqlash
+  // Save
   const outputPath = `./${className}.png`;
   fs.writeFileSync(outputPath, await canvas.toBuffer("png"));
-
   return outputPath;
 }
 
 async function deleteImage(path) {
   try {
     fs.unlinkSync(path);
-  } catch (err) {
-    console.log("Delete error:", err);
+  } catch (e) {
+    console.error(e);
   }
 }
 
