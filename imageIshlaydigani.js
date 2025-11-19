@@ -7,13 +7,13 @@ async function generateImageFromSheetData(sheetData) {
   }
 
   // ============================
-  // 1️⃣ FORMAT
+  // 1️⃣ KELAYOTGAN FORMAT TO‘G‘RI O‘QILADI
   // ============================
-  const className = sheetData[0][0];
-  const header = sheetData[1];
-  const rows = sheetData.slice(2);
+  const className = sheetData[0][0]; // ["5 Green"] → "5 Green"
+  const header = sheetData[1]; // header array
+  const rows = sheetData.slice(2); // qolganlar — rows
 
-  // Saralash — umumiy ball bo‘yicha
+  // Umumiy ball bo‘yicha saralash
   const scoreIndex = header.length - 2;
   rows.sort((a, b) => {
     const av = parseFloat(a[scoreIndex]);
@@ -22,7 +22,7 @@ async function generateImageFromSheetData(sheetData) {
   });
 
   // ============================
-  // 2️⃣ O‘lchamlar
+  // 2️⃣ RASM O‘LCHAMLARI
   // ============================
   const width = 1700;
   const tableX = 40;
@@ -37,17 +37,18 @@ async function generateImageFromSheetData(sheetData) {
   const height =
     titleHeight + headerHeight + rows.length * rowHeight + footerHeight;
 
+  // Canvas
   const canvas = new Canvas(width, height);
   const ctx = canvas.getContext("2d");
 
   // ============================
-  // 3️⃣ Fon
+  // 3️⃣ FON
   // ============================
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, width, height);
 
   // ============================
-  // 4️⃣ Yuqori banner (class name)
+  // 4️⃣ YUQORI BANNER (CLASS NAME)
   // ============================
   ctx.fillStyle = "#0f2f66";
   ctx.fillRect(0, 0, width, titleHeight);
@@ -70,33 +71,20 @@ async function generateImageFromSheetData(sheetData) {
 
   ctx.fillStyle = "#000";
   ctx.font = "bold 24px Arial";
-
   for (let i = 0; i < colCount; i++) {
     const x = tableX + i * colWidth + colWidth / 2;
     const y = headerY + headerHeight / 2 + 8;
     ctx.fillText(String(header[i] ?? ""), x, y);
   }
 
-  // 🔷 **HEADER USTUN CHIZIQLARI**
-  ctx.strokeStyle = "#999";
-  ctx.lineWidth = 1;
-
-  for (let i = 1; i < colCount; i++) {
-    const x = tableX + i * colWidth;
-    ctx.beginPath();
-    ctx.moveTo(x, headerY);
-    ctx.lineTo(x, headerY + headerHeight);
-    ctx.stroke();
-  }
-
   // ============================
-  // 6️⃣ BODY
+  // 6️⃣ BODY (ROWS)
   // ============================
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r];
     const rowY = headerY + headerHeight + r * rowHeight;
 
-    // Top 1 sariq fon
+    // 🔥 Top 1 sariq fon
     ctx.fillStyle = r === 0 ? "#ffe082" : "#ffffff";
     ctx.fillRect(tableX, rowY, colCount * colWidth, rowHeight);
 
@@ -107,6 +95,7 @@ async function generateImageFromSheetData(sheetData) {
       const text = row[c] == null ? "" : String(row[c]);
       const x = tableX + c * colWidth + colWidth / 2;
 
+      // 🔴 50 ball qizil
       if (!isNaN(text) && Number(text) === 50) {
         ctx.fillStyle = "#d00000";
         ctx.font = "bold 24px Arial";
@@ -116,15 +105,6 @@ async function generateImageFromSheetData(sheetData) {
       }
 
       ctx.fillText(text, x, rowY + rowHeight / 2 + 7);
-    }
-
-    // 🔷 **BODY USTUN CHIZIQLARI**
-    for (let i = 1; i < colCount; i++) {
-      const x = tableX + i * colWidth;
-      ctx.beginPath();
-      ctx.moveTo(x, rowY);
-      ctx.lineTo(x, rowY + rowHeight);
-      ctx.stroke();
     }
   }
 
@@ -139,7 +119,7 @@ async function generateImageFromSheetData(sheetData) {
   ctx.fillText("Sinf samaradorligi: 75%", tableX, height - 25);
 
   // ============================
-  // 8️⃣ Saqlash
+  // 8️⃣ SAQLASH
   // ============================
   const output = `./${className}.png`;
   fs.writeFileSync(output, await canvas.toBuffer("png"));
