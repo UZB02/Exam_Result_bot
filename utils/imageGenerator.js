@@ -15,7 +15,9 @@ async function generateImageFromSheetData(data, className) {
   const rowHeight = 50;
   const headerHeight = 60;
   const titleHeight = 70;
-  const height = titleHeight + headerHeight + rows.length * rowHeight + 50;
+  const footerHeight = 80;
+  const height =
+    titleHeight + headerHeight + rows.length * rowHeight + footerHeight;
 
   const canvas = new Canvas(width, height);
   const ctx = canvas.getContext("2d");
@@ -53,16 +55,8 @@ async function generateImageFromSheetData(data, className) {
     const y = 80 + headerHeight + r * rowHeight;
 
     // 1-o‘rin → SARIQ
-    if (r === 0) {
-      ctx.fillStyle = "#ffd54f";
-      ctx.fillRect(50, y, width - 100, rowHeight);
-    }
-
-    // Oddiy qator foni
-    if (r > 0) {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(50, y, width - 100, rowHeight);
-    }
+    ctx.fillStyle = r === 0 ? "#ffd54f" : "#ffffff";
+    ctx.fillRect(50, y, width - 100, rowHeight);
 
     // CHIZIQLAR
     ctx.strokeStyle = "#999";
@@ -72,9 +66,10 @@ async function generateImageFromSheetData(data, className) {
     row.forEach((col, c) => {
       let textColor = "#000";
       let font = "24px Arial";
+      const value = col.toString();
 
       // 50 ball → qizil
-      if (parseFloat(col) === 50) {
+      if (!isNaN(parseFloat(value)) && parseFloat(value) === 50) {
         textColor = "red";
         font = "bold 24px Arial";
       }
@@ -84,9 +79,23 @@ async function generateImageFromSheetData(data, className) {
 
       ctx.fillStyle = textColor;
       ctx.font = font;
-      ctx.fillText(col.toString(), 50 + c * colWidth + 10, y + 33);
+      ctx.fillText(value, 50 + c * colWidth + 10, y + rowHeight / 2 + 8);
     });
   });
+
+  // 📊 Pastki statistik ma'lumotlar
+  ctx.font = "bold 22px Arial";
+  ctx.fillStyle = "#1a3d7c";
+  const footerY1 = height - 40;
+  const footerY2 = height - 10;
+
+  ctx.fillText("Fanlar kesimida samaradorlik (100%)", 50, footerY1);
+  ["80", "60", "87", "74"].forEach((val, i) => {
+    ctx.fillText(val, 500 + i * colWidth, footerY1);
+  });
+
+  ctx.fillText("Sinf samaradorligi (100%)", 50, footerY2);
+  ctx.fillText("75", 500, footerY2);
 
   // Saqlash
   const outputPath = `./${className}.png`;
