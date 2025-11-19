@@ -20,6 +20,7 @@ async function generateImageFromSheetData(data, className) {
     const logoData = fs.readFileSync(logoPath, { encoding: "base64" });
     logoBase64 = `data:image/png;base64,${logoData}`;
   }
+  
 
   // HTML yaratish
   const html = `
