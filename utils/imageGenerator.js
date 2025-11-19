@@ -10,7 +10,7 @@ async function generateImageFromSheetData(data, className) {
   rows.sort((a, b) => parseFloat(b[scoreIndex]) - parseFloat(a[scoreIndex]));
 
   // Canvas o‘lchami
-  const width = 1500;
+  const width = 800;
   const cellHeight = 50;
   const headerHeight = 60;
   const height = headerHeight + rows.length * cellHeight + 200;
