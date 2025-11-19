@@ -158,8 +158,56 @@ async function generateImageFromSheetData(sheetData) {
   ctx.font = "bold 24px Arial";
   ctx.textAlign = "left";
 
-  ctx.fillText("Fanlar kesimida samaradorlik (100%)", tableX, height - 60);
-  ctx.fillText("Sinf samaradorligi: 75%", tableX, height - 25);
+const percentIndex = header.length - 1;
+
+let totalPercent = 0;
+let count = 0;
+
+rows.forEach((r) => {
+  const p = parseFloat(r[percentIndex]);
+  if (!isNaN(p)) {
+    totalPercent += p;
+    count++;
+  }
+});
+
+const classEfficiency = count > 0 ? (totalPercent / count).toFixed(1) : 0;
+
+const subjectStartIndex = 2; // 3-ustundan boshlab fanlar
+const subjectEndIndex = header.length - 3; // "Umumiy ball" va "%" ni hisobga olmaymiz
+
+let subjectPercent = 0;
+let subjectCount = 0;
+
+for (let i = subjectStartIndex; i <= subjectEndIndex; i++) {
+  let total = 0;
+  let count = 0;
+
+  rows.forEach((r) => {
+    const s = parseFloat(r[i]);
+    if (!isNaN(s)) {
+      total += (s / 50) * 100;
+      count++;
+    }
+  });
+
+  if (count > 0) {
+    subjectPercent += total / count;
+    subjectCount++;
+  }
+}
+
+const subjectsEfficiency =
+  subjectCount > 0 ? (subjectPercent / subjectCount).toFixed(1) : 0;
+
+  ctx.fillText(
+    `Fanlar kesimida samaradorlik: ${subjectsEfficiency}%`,
+    tableX,
+    height - 60
+  );
+
+  ctx.fillText(`Sinf samaradorligi: ${classEfficiency}%`, tableX, height - 25);
+
 
   // =========================================
   // 8️⃣ PNG holatida saqlash
