@@ -1,18 +1,21 @@
 const fs = require("fs");
 const path = require("path");
-const puppeteer = require("puppeteer");
+const nodeHtmlToImage = require("node-html-to-image");
 
 async function generateImageFromSheetData(data, className) {
   const header = data[0];
   let rows = data.slice(1);
 
+  // Ball bo‘yicha saralash (oxirgi 2-ustun)
   const scoreIndex = header.length - 2;
   rows.sort((a, b) => parseFloat(b[scoreIndex]) - parseFloat(a[scoreIndex]));
 
+  // Logo base64
   const logoPath = path.resolve(__dirname, "../img/logo.png");
   const logoData = fs.readFileSync(logoPath, { encoding: "base64" });
   const logoBase64 = `data:image/png;base64,${logoData}`;
 
+  // HTML yaratish
   const html = `
 <html>
 <head>
@@ -27,54 +30,50 @@ async function generateImageFromSheetData(data, className) {
   </style>
 </head>
 <body>
-<h2>${className} sinfi natijalari</h2>
-
-<table>
-<thead>
-<tr>${header.map((h) => `<th>${h}</th>`).join("")}</tr>
-</thead>
-
-<tbody>
-${rows
-  .map(
-    (row) => `
-<tr>
-${row
-  .map((col) =>
-    parseFloat(col) === 50
-      ? `<td class="red">${col}</td>`
-      : `<td>${col}</td>`
-  )
-  .join("")}
-</tr>`
-  )
-  .join("")}
-</tbody>
-</table>
-
+  <img src="${logoBase64}" alt="Logo" width="100"/>
+  <h2>${className} sinfi natijalari</h2>
+  <table>
+    <thead>
+      <tr>${header.map((h) => `<th>${h}</th>`).join("")}</tr>
+    </thead>
+    <tbody>
+      ${rows
+        .map(
+          (row) => `
+          <tr>
+            ${row
+              .map((col) =>
+                parseFloat(col) === 50
+                  ? `<td class="red">${col}</td>`
+                  : `<td>${col}</td>`
+              )
+              .join("")}
+          </tr>
+        `
+        )
+        .join("")}
+    </tbody>
+  </table>
 </body>
 </html>
 `;
 
-  const browser = await puppeteer.launch({
-    headless: "new",
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  // Rasmga aylantirish
+  const outputPath = `./${className}.png`;
+  await nodeHtmlToImage({
+    output: outputPath,
+    html: html,
   });
 
-  const page = await browser.newPage();
-  await page.setContent(html);
-
-  const outputPath = `./${className}.png`;
-  await page.screenshot({ path: outputPath, fullPage: true });
-
-  await browser.close();
   return outputPath;
 }
 
 async function deleteImage(filePath) {
   try {
     fs.unlinkSync(filePath);
-  } catch {}
+  } catch (err) {
+    console.error("Rasmni o'chirishda xato:", err);
+  }
 }
 
 module.exports = { generateImageFromSheetData, deleteImage };
