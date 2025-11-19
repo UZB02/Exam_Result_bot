@@ -3,17 +3,17 @@ const fs = require("fs");
 
 async function generateImageFromSheetData(sheetData) {
   if (!Array.isArray(sheetData) || sheetData.length < 2) {
-    throw new Error("❌ [className, table] formatida kelishi kerak.");
+    throw new Error("❌ sheetData formati noto‘g‘ri.");
   }
 
-  const className = sheetData[0];
-  const table = sheetData[1];
-  console.log(table, "salom", sheetData);
+  // ============================
+  // 1️⃣ KELAYOTGAN FORMAT TO‘G‘RI O‘QILADI
+  // ============================
+  const className = sheetData[0][0]; // ["5 Green"] → "5 Green"
+  const header = sheetData[1]; // header array
+  const rows = sheetData.slice(2); // qolganlar — rows
 
-  const header = table[0];
-  let rows = table.slice(1).filter(Array.isArray);
-
-  // 🔥 Umumiy ball bo‘yicha saralash (so‘nggi -2 ustun)
+  // Umumiy ball bo‘yicha saralash
   const scoreIndex = header.length - 2;
   rows.sort((a, b) => {
     const av = parseFloat(a[scoreIndex]);
@@ -21,7 +21,9 @@ async function generateImageFromSheetData(sheetData) {
     return (isNaN(bv) ? -Infinity : bv) - (isNaN(av) ? -Infinity : av);
   });
 
-  // === RASM O'LCHAMLARI ===
+  // ============================
+  // 2️⃣ RASM O‘LCHAMLARI
+  // ============================
   const width = 1700;
   const tableX = 40;
   const colCount = header.length;
@@ -35,64 +37,66 @@ async function generateImageFromSheetData(sheetData) {
   const height =
     titleHeight + headerHeight + rows.length * rowHeight + footerHeight;
 
+  // Canvas
   const canvas = new Canvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  // === FON ===
-  ctx.fillStyle = "#ffffff";
+  // ============================
+  // 3️⃣ FON
+  // ============================
+  ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, width, height);
 
-  // === KO‘K BANNER (Sarlavha) ===
+  // ============================
+  // 4️⃣ YUQORI BANNER (CLASS NAME)
+  // ============================
   ctx.fillStyle = "#0f2f66";
   ctx.fillRect(0, 0, width, titleHeight);
 
   ctx.fillStyle = "#fff";
   ctx.font = "bold 42px Arial";
   ctx.textAlign = "center";
-  ctx.fillText(String(className), width / 2, 58);
+  ctx.fillText(className, width / 2, 58);
 
-  // === HEADER ===
+  // ============================
+  // 5️⃣ HEADER
+  // ============================
   const headerY = titleHeight;
 
   ctx.fillStyle = "#dfe8f0";
-  ctx.fillRect(tableX, headerY, colWidth * colCount, headerHeight);
+  ctx.fillRect(tableX, headerY, colCount * colWidth, headerHeight);
 
   ctx.strokeStyle = "#000";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(tableX, headerY, colWidth * colCount, headerHeight);
+  ctx.strokeRect(tableX, headerY, colCount * colWidth, headerHeight);
 
-  // Header textlari
   ctx.fillStyle = "#000";
   ctx.font = "bold 24px Arial";
-
   for (let i = 0; i < colCount; i++) {
-    const text = header[i] == null ? "" : String(header[i]);
     const x = tableX + i * colWidth + colWidth / 2;
     const y = headerY + headerHeight / 2 + 8;
-    ctx.fillText(text, x, y);
+    ctx.fillText(String(header[i] ?? ""), x, y);
   }
 
-  // === BODY QATORLARI ===
+  // ============================
+  // 6️⃣ BODY (ROWS)
+  // ============================
   for (let r = 0; r < rows.length; r++) {
+    const row = rows[r];
     const rowY = headerY + headerHeight + r * rowHeight;
 
-    // ❗ 1-o‘rin — oltin fon
-    if (r === 0) ctx.fillStyle = "#ffe082";
-    else ctx.fillStyle = "#ffffff";
+    // 🔥 Top 1 sariq fon
+    ctx.fillStyle = r === 0 ? "#ffe082" : "#ffffff";
+    ctx.fillRect(tableX, rowY, colCount * colWidth, rowHeight);
 
-    ctx.fillRect(tableX, rowY, colWidth * colCount, rowHeight);
-
-    ctx.strokeStyle = "#777";
-    ctx.strokeRect(tableX, rowY, colWidth * colCount, rowHeight);
+    ctx.strokeStyle = "#999";
+    ctx.strokeRect(tableX, rowY, colCount * colWidth, rowHeight);
 
     for (let c = 0; c < colCount; c++) {
-      let text = rows[r][c];
-      text = text == null ? "" : String(text);
-
+      const text = row[c] == null ? "" : String(row[c]);
       const x = tableX + c * colWidth + colWidth / 2;
 
-      // 50 ball → qizil matn
-      if (!isNaN(parseFloat(text)) && parseFloat(text) === 50) {
+      // 🔴 50 ball qizil
+      if (!isNaN(text) && Number(text) === 50) {
         ctx.fillStyle = "#d00000";
         ctx.font = "bold 24px Arial";
       } else {
@@ -104,7 +108,9 @@ async function generateImageFromSheetData(sheetData) {
     }
   }
 
-  // === FOOTER ===
+  // ============================
+  // 7️⃣ FOOTER
+  // ============================
   ctx.fillStyle = "#0f2f66";
   ctx.font = "bold 24px Arial";
   ctx.textAlign = "left";
@@ -112,8 +118,10 @@ async function generateImageFromSheetData(sheetData) {
   ctx.fillText("Fanlar kesimida samaradorlik (100%)", tableX, height - 60);
   ctx.fillText("Sinf samaradorligi: 75%", tableX, height - 25);
 
-  // === SAQLASH ===
-  const output = `./${String(className)}.png`;
+  // ============================
+  // 8️⃣ SAQLASH
+  // ============================
+  const output = `./${className}.png`;
   fs.writeFileSync(output, await canvas.toBuffer("png"));
 
   return output;
@@ -122,9 +130,7 @@ async function generateImageFromSheetData(sheetData) {
 async function deleteImage(path) {
   try {
     fs.unlinkSync(path);
-  } catch (err) {
-    console.error(err);
-  }
+  } catch {}
 }
 
 module.exports = { generateImageFromSheetData, deleteImage };
