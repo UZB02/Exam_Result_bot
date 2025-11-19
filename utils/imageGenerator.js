@@ -8,6 +8,7 @@ async function generateImageFromSheetData(sheetData) {
 
   const className = sheetData[0];
   const table = sheetData[1];
+  console.log(table, "salom", sheetData);
 
   const header = table[0];
   let rows = table.slice(1).filter(Array.isArray);
