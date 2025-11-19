@@ -1,73 +1,105 @@
 const { Canvas } = require("skia-canvas");
 const fs = require("fs");
-const path = require("path");
 
 async function generateImageFromSheetData(data, className) {
   const header = data[0];
   let rows = data.slice(1);
 
+  // 🔹 Eng yuqori ball bo‘yicha saralash
   const scoreIndex = header.length - 2;
   rows.sort((a, b) => parseFloat(b[scoreIndex]) - parseFloat(a[scoreIndex]));
 
-  // Canvas o‘lchami
-  const width = 800;
-  const cellHeight = 50;
+  // 📌 O‘lchamlar
+  const width = 1600;
+  const colWidth = (width - 100) / header.length;
+  const rowHeight = 50;
   const headerHeight = 60;
-  const height = headerHeight + rows.length * cellHeight + 200;
+  const titleHeight = 70;
+  const height = titleHeight + headerHeight + rows.length * rowHeight + 50;
 
   const canvas = new Canvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  ctx.fillStyle = "white";
+  // Oq fon
+  ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
   // Title
-  ctx.font = "bold 40px Arial";
-  ctx.fillStyle = "black";
-  ctx.fillText(`${className} sinfi natijalari`, 50, 60);
+  ctx.font = "bold 45px Arial";
+  ctx.fillStyle = "#1a3d7c";
+  ctx.textAlign = "center";
+  ctx.fillText(className, width / 2, 50);
 
-  // Table header
-  ctx.font = "bold 26px Arial";
-  ctx.fillStyle = "darkslategray";
+  // HEADER FON
+  ctx.fillStyle = "#b8cee3";
+  ctx.fillRect(50, 80, width - 100, headerHeight);
 
-  let x = 50;
-  const colWidth = (width - 100) / header.length;
+  // HEADER CHIZIQLARI
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(50, 80, width - 100, headerHeight);
+
+  // HEADER MATNLARI
+  ctx.font = "bold 24px Arial";
+  ctx.fillStyle = "#000";
+  ctx.textAlign = "left";
 
   header.forEach((h, i) => {
-    ctx.fillText(h, x + i * colWidth, 120);
+    ctx.fillText(h, 50 + i * colWidth + 10, 118);
   });
 
-  // Body rows
-  ctx.font = "24px Arial";
+  // BODY QATORLARI
+  rows.forEach((row, r) => {
+    const y = 80 + headerHeight + r * rowHeight;
 
-  rows.forEach((row, rowIndex) => {
-    const y = 120 + (rowIndex + 1) * cellHeight;
+    // 1-o‘rin → SARIQ
+    if (r === 0) {
+      ctx.fillStyle = "#ffd54f";
+      ctx.fillRect(50, y, width - 100, rowHeight);
+    }
 
-    row.forEach((col, colIndex) => {
+    // Oddiy qator foni
+    if (r > 0) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(50, y, width - 100, rowHeight);
+    }
+
+    // CHIZIQLAR
+    ctx.strokeStyle = "#999";
+    ctx.strokeRect(50, y, width - 100, rowHeight);
+
+    // Matnlar
+    row.forEach((col, c) => {
+      let textColor = "#000";
+      let font = "24px Arial";
+
+      // 50 ball → qizil
       if (parseFloat(col) === 50) {
-        ctx.fillStyle = "red";
-        ctx.font = "bold 24px Arial";
-      } else {
-        ctx.fillStyle = "black";
-        ctx.font = "24px Arial";
+        textColor = "red";
+        font = "bold 24px Arial";
       }
 
-      ctx.fillText(col.toString(), x + colIndex * colWidth, y);
+      // 1-o‘rin → qora matn
+      if (r === 0) textColor = "#000";
+
+      ctx.fillStyle = textColor;
+      ctx.font = font;
+      ctx.fillText(col.toString(), 50 + c * colWidth + 10, y + 33);
     });
   });
 
+  // Saqlash
   const outputPath = `./${className}.png`;
-  const buffer = await canvas.toBuffer("png");
-  fs.writeFileSync(outputPath, buffer);
+  fs.writeFileSync(outputPath, await canvas.toBuffer("png"));
 
   return outputPath;
 }
 
-async function deleteImage(filePath) {
+async function deleteImage(path) {
   try {
-    fs.unlinkSync(filePath);
+    fs.unlinkSync(path);
   } catch (err) {
-    console.error("Rasmni o'chirishda xato:", err);
+    console.log("Delete error:", err);
   }
 }
 
