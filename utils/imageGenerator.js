@@ -2,6 +2,9 @@ const fs = require("fs");
 const path = require("path");
 const nodeHtmlToImage = require("node-html-to-image");
 
+// ================================
+// Google Sheet’dan kelgan ma’lumotni rasmga aylantirish
+// ================================
 async function generateImageFromSheetData(data, className) {
   const header = data[0];
   let rows = data.slice(1);
@@ -11,9 +14,12 @@ async function generateImageFromSheetData(data, className) {
   rows.sort((a, b) => parseFloat(b[scoreIndex]) - parseFloat(a[scoreIndex]));
 
   // Logo base64
-  const logoPath = path.resolve(__dirname, "../img/logo.png");
-  const logoData = fs.readFileSync(logoPath, { encoding: "base64" });
-  const logoBase64 = `data:image/png;base64,${logoData}`;
+  const logoPath = path.resolve(__dirname, "../img/logo.png"); // logo fayli yo‘lini tekshiring
+  let logoBase64 = "";
+  if (fs.existsSync(logoPath)) {
+    const logoData = fs.readFileSync(logoPath, { encoding: "base64" });
+    logoBase64 = `data:image/png;base64,${logoData}`;
+  }
 
   // HTML yaratish
   const html = `
@@ -30,7 +36,7 @@ async function generateImageFromSheetData(data, className) {
   </style>
 </head>
 <body>
-  <img src="${logoBase64}" alt="Logo" width="100"/>
+  ${logoBase64 ? `<img src="${logoBase64}" alt="Logo" width="100"/>` : ""}
   <h2>${className} sinfi natijalari</h2>
   <table>
     <thead>
@@ -68,6 +74,9 @@ async function generateImageFromSheetData(data, className) {
   return outputPath;
 }
 
+// ================================
+// Rasmni o‘chirish funksiyasi
+// ================================
 async function deleteImage(filePath) {
   try {
     fs.unlinkSync(filePath);
