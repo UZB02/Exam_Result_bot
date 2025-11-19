@@ -5,10 +5,10 @@ const fs = require("fs");
 async function generateImageFromSheetData(data, className) {
   const header = data[0];
   let rows = data.slice(1);
-
   const scoreIndex = header.length - 2;
   rows.sort((a, b) => parseFloat(b[scoreIndex]) - parseFloat(a[scoreIndex]));
-
+  
+  console.log(header,rows);
   // O'lchamlar
   const width = 1600;
   const rowHeight = 50;
