@@ -5,99 +5,99 @@ async function generateImageFromSheetData(data, className) {
   const header = data[0];
   let rows = data.slice(1);
 
-  // 🔹 Eng yuqori ball bo‘yicha saralash
+  // 🔹 Eng yuqori ball bo‘yicha saralash (Oxiridan 2-ustun — Umumiy ball)
   const scoreIndex = header.length - 2;
   rows.sort((a, b) => parseFloat(b[scoreIndex]) - parseFloat(a[scoreIndex]));
 
   // 📌 O‘lchamlar
   const width = 1600;
-  const colWidth = (width - 100) / header.length;
+  const colWidth = Math.floor((width - 100) / header.length);
   const rowHeight = 50;
   const headerHeight = 60;
   const titleHeight = 70;
   const footerHeight = 80;
+
   const height =
     titleHeight + headerHeight + rows.length * rowHeight + footerHeight;
 
   const canvas = new Canvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  // Oq fon
+  // 🔹 Oq fon
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  // Title
+  // 🔹 Sarlavha
   ctx.font = "bold 45px Arial";
   ctx.fillStyle = "#1a3d7c";
   ctx.textAlign = "center";
   ctx.fillText(className, width / 2, 50);
 
-  // HEADER FON
+  // 🔹 HEADER (Ustunlar)
+  const headerY = 80;
+
   ctx.fillStyle = "#b8cee3";
-  ctx.fillRect(50, 80, width - 100, headerHeight);
+  ctx.fillRect(50, headerY, width - 100, headerHeight);
 
-  // HEADER CHIZIQLARI
   ctx.strokeStyle = "#000";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(50, 80, width - 100, headerHeight);
+  ctx.strokeRect(50, headerY, width - 100, headerHeight);
 
-  // HEADER MATNLARI
-  ctx.font = "bold 24px Arial";
+  ctx.font = "bold 22px Arial";
   ctx.fillStyle = "#000";
-  ctx.textAlign = "left";
+  ctx.textAlign = "center";
 
   header.forEach((h, i) => {
-    ctx.fillText(h, 50 + i * colWidth + 10, 118);
+    const x = 50 + i * colWidth + colWidth / 2;
+    ctx.fillText(h, x, headerY + headerHeight / 2 + 8);
   });
 
-  // BODY QATORLARI
+  // 🔹 BODY QATORLARI
   rows.forEach((row, r) => {
-    const y = 80 + headerHeight + r * rowHeight;
+    const y = headerY + headerHeight + r * rowHeight;
 
-    // 1-o‘rin → SARIQ
+    // 1-o‘rin — sariq fon
     ctx.fillStyle = r === 0 ? "#ffd54f" : "#ffffff";
     ctx.fillRect(50, y, width - 100, rowHeight);
 
-    // CHIZIQLAR
+    // Chiziqlar
     ctx.strokeStyle = "#999";
     ctx.strokeRect(50, y, width - 100, rowHeight);
 
-    // Matnlar
+    ctx.textAlign = "center";
+
     row.forEach((col, c) => {
       let textColor = "#000";
-      let font = "24px Arial";
+      let font = "22px Arial";
       const value = col.toString();
 
-      // 50 ball → qizil
-      if (!isNaN(parseFloat(value)) && parseFloat(value) === 50) {
+      // 50 ball qizil
+      if (!isNaN(value) && parseFloat(value) === 50) {
         textColor = "red";
-        font = "bold 24px Arial";
+        font = "bold 22px Arial";
       }
-
-      // 1-o‘rin → qora matn
-      if (r === 0) textColor = "#000";
 
       ctx.fillStyle = textColor;
       ctx.font = font;
-      ctx.fillText(value, 50 + c * colWidth + 10, y + rowHeight / 2 + 8);
+
+      const x = 50 + c * colWidth + colWidth / 2;
+      const yText = y + rowHeight / 2 + 8;
+
+      ctx.fillText(value, x, yText);
     });
   });
 
-  // 📊 Pastki statistik ma'lumotlar
+  // 🔹 Pastki statistikalar
   ctx.font = "bold 22px Arial";
   ctx.fillStyle = "#1a3d7c";
+
   const footerY1 = height - 40;
   const footerY2 = height - 10;
 
-  ctx.fillText("Fanlar kesimida samaradorlik (100%)", 50, footerY1);
-  ["80", "60", "87", "74"].forEach((val, i) => {
-    ctx.fillText(val, 500 + i * colWidth, footerY1);
-  });
+  ctx.fillText("Fanlar kesimida samaradorlik (100%)", 200, footerY1);
 
-  ctx.fillText("Sinf samaradorligi (100%)", 50, footerY2);
-  ctx.fillText("75", 500, footerY2);
+  ctx.fillText("Sinf samaradorligi: 75%", 200, footerY2);
 
-  // Saqlash
+  // 🔹 Saqlash
   const outputPath = `./${className}.png`;
   fs.writeFileSync(outputPath, await canvas.toBuffer("png"));
 
