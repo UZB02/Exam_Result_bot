@@ -44,8 +44,8 @@ async function generateImageFromSheetData(sheetData) {
   const rows = sheetData.slice(2);
 
   // Saralash — umumiy ball bo‘yicha
-  const scoreIndex = header.length - 2;
-  rows.sort((a, b) => parseFloat(b[scoreIndex]) - parseFloat(a[scoreIndex]));
+  // const scoreIndex = header.length - 2;
+  // rows.sort((a, b) => parseFloat(b[scoreIndex]) - parseFloat(a[scoreIndex]));
 
   // TEMPORARY canvas — ustun kengligini hisoblash uchun
   const tempCanvas = new Canvas(2000, 2000);
