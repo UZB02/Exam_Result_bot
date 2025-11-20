@@ -47,6 +47,11 @@ async function generateImageFromSheetData(sheetData) {
   const scoreIndex = header.length - 2;
   rows.sort((a, b) => parseFloat(b[scoreIndex]) - parseFloat(a[scoreIndex]));
 
+  // 🔥 Avtomatik tartib raqam berish (№)
+  for (let i = 0; i < rows.length; i++) {
+    rows[i][0] = i + 1;
+  }
+
   // TEMPORARY canvas — ustun kengligini hisoblash uchun
   const tempCanvas = new Canvas(2000, 2000);
   const tempCtx = tempCanvas.getContext("2d");
@@ -158,47 +163,47 @@ async function generateImageFromSheetData(sheetData) {
   ctx.font = "bold 24px Arial";
   ctx.textAlign = "left";
 
-const percentIndex = header.length - 1;
+  const percentIndex = header.length - 1;
 
-let totalPercent = 0;
-let count = 0;
-
-rows.forEach((r) => {
-  const p = parseFloat(r[percentIndex]);
-  if (!isNaN(p)) {
-    totalPercent += p;
-    count++;
-  }
-});
-
-const classEfficiency = count > 0 ? (totalPercent / count).toFixed(1) : 0;
-
-const subjectStartIndex = 2; // 3-ustundan boshlab fanlar
-const subjectEndIndex = header.length - 3; // "Umumiy ball" va "%" ni hisobga olmaymiz
-
-let subjectPercent = 0;
-let subjectCount = 0;
-
-for (let i = subjectStartIndex; i <= subjectEndIndex; i++) {
-  let total = 0;
+  let totalPercent = 0;
   let count = 0;
 
   rows.forEach((r) => {
-    const s = parseFloat(r[i]);
-    if (!isNaN(s)) {
-      total += (s / 50) * 100;
+    const p = parseFloat(r[percentIndex]);
+    if (!isNaN(p)) {
+      totalPercent += p;
       count++;
     }
   });
 
-  if (count > 0) {
-    subjectPercent += total / count;
-    subjectCount++;
-  }
-}
+  const classEfficiency = count > 0 ? (totalPercent / count).toFixed(1) : 0;
 
-const subjectsEfficiency =
-  subjectCount > 0 ? (subjectPercent / subjectCount).toFixed(1) : 0;
+  const subjectStartIndex = 2; // 3-ustundan boshlab fanlar
+  const subjectEndIndex = header.length - 3; // "Umumiy ball" va "%" ni hisobga olmaymiz
+
+  let subjectPercent = 0;
+  let subjectCount = 0;
+
+  for (let i = subjectStartIndex; i <= subjectEndIndex; i++) {
+    let total = 0;
+    let count = 0;
+
+    rows.forEach((r) => {
+      const s = parseFloat(r[i]);
+      if (!isNaN(s)) {
+        total += (s / 50) * 100;
+        count++;
+      }
+    });
+
+    if (count > 0) {
+      subjectPercent += total / count;
+      subjectCount++;
+    }
+  }
+
+  const subjectsEfficiency =
+    subjectCount > 0 ? (subjectPercent / subjectCount).toFixed(1) : 0;
 
   ctx.fillText(
     `Fanlar kesimida samaradorlik: ${subjectsEfficiency}%`,
@@ -207,7 +212,6 @@ const subjectsEfficiency =
   );
 
   ctx.fillText(`Sinf samaradorligi: ${classEfficiency}%`, tableX, height - 25);
-
 
   // =========================================
   // 8️⃣ PNG holatida saqlash
