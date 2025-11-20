@@ -140,7 +140,13 @@ async function generateImageFromSheetData(sheetData) {
       ctx.strokeRect(xPos, rowY, w, rowHeight);
 
       // Matnni joylash
-      ctx.textAlign = "center";
+      if (c === 1) {
+        ctx.textAlign = "left";
+        ctx.fillText(text, xPos + 15, rowY + rowHeight / 2 + 7);
+      } else {
+        ctx.textAlign = "center";
+        ctx.fillText(text, xPos + w / 2, rowY + rowHeight / 2 + 7);
+      }
 
       const totalScoreIndex = header.length - 2; // Umumiy ball
       const percentIndex = header.length - 1; // %
