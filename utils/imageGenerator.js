@@ -176,7 +176,7 @@ async function generateImageFromSheetData(sheetData) {
     }
   });
 
-  const classEfficiency = count > 0 ? (totalPercent / count).toFixed(1) : 0;
+  // const classEfficiency = count > 0 ? (totalPercent / count).toFixed(1) : 0;
 
   const subjectStartIndex = 2; // 3-ustundan boshlab fanlar
   const subjectEndIndex = header.length - 3; // "Umumiy ball" va "%" ni hisobga olmaymiz
@@ -206,12 +206,12 @@ async function generateImageFromSheetData(sheetData) {
     subjectCount > 0 ? (subjectPercent / subjectCount).toFixed(1) : 0;
 
   ctx.fillText(
-    `Fanlar kesimida samaradorlik: ${subjectsEfficiency}%`,
+    `Sinf samaradorligi: ${subjectsEfficiency}%`,
     tableX,
     height - 60
   );
 
-  ctx.fillText(`Sinf samaradorligi: ${classEfficiency}%`, tableX, height - 25);
+  // ctx.fillText(`Sinf samaradorligi: ${classEfficiency}%`, tableX, height - 25);
 
   // =========================================
   // 8️⃣ PNG holatida saqlash
