@@ -8,7 +8,7 @@ const {
 
 // 🔥 Bir nechta adminlarni qo‘llab-quvvatlash
 const ADMIN_IDS = process.env.ADMIN_IDS
-  ? process.env.ADMIN_IDS.split(",").map((id) => id.trim())
+  ? process.env.ADMIN_IDS.split(" ").map((id) => id.trim())
   : [];
 
 module.exports = (bot) => {
