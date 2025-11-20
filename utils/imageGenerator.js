@@ -142,7 +142,16 @@ async function generateImageFromSheetData(sheetData) {
       // Matnni joylash
       ctx.textAlign = "center";
 
-      if (!isNaN(text) && Number(text) === 50) {
+      const totalScoreIndex = header.length - 2; // Umumiy ball
+      const percentIndex = header.length - 1; // %
+
+      if (
+        !isNaN(text) &&
+        Number(text) === 50 &&
+        c !== totalScoreIndex &&
+        c !== percentIndex
+      ) {
+        // faqat fanlar ustuni 50 bo‘lsa qizil
         ctx.fillStyle = "#d00000";
         ctx.font = "bold 24px Arial";
       } else {
