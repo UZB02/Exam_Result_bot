@@ -4,7 +4,6 @@ const { getSheetData } = require("./googleService.js");
 const {
   generateImageFromSheetData,
   deleteImage,
-  lastClassName,
 } = require("./utils/imageGenerator.js");
 
 // 🔥 Bir nechta adminlarni qo‘llab-quvvatlash
@@ -88,14 +87,14 @@ module.exports = (bot) => {
 
         const imagePath = await generateImageFromSheetData(
           sheetData,
-          group.name,
-          lastClassName
+          group.name
         );
         console.log("📌 Rasm yaratildi:", imagePath);
 
         await bot.sendPhoto(group.chatId, imagePath, {
-          caption: `📊 ${lastClassName} sinfi natijalari!`,
+          caption: `📊 ${group.name} sinfi natijalari!`,
         });
+        console.log(sheetData);
 
         await deleteImage(imagePath);
       } catch (err) {
