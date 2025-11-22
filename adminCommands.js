@@ -94,7 +94,7 @@ module.exports = (bot) => {
         await bot.sendPhoto(group.chatId, imagePath, {
           caption: `📊 ${sheetData[0][0]}!`,
         });
-        console.log(sheetData);
+        // console.log(sheetData);
 
         await deleteImage(imagePath);
       } catch (err) {
