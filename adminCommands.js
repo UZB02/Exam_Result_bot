@@ -92,7 +92,7 @@ module.exports = (bot) => {
         console.log("📌 Rasm yaratildi:", imagePath);
 
         await bot.sendPhoto(group.chatId, imagePath, {
-          caption: `📊 ${group.name} sinfi natijalari!`,
+          caption: `📊 ${sheetData[0][0]}!`,
         });
         console.log(sheetData);
 
