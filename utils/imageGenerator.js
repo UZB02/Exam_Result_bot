@@ -33,6 +33,7 @@ function calculateDynamicColumnWidths(
 // =========================================
 // 2️⃣ RASM GENERATOR
 // =========================================
+let lastClassName=""
 async function generateImageFromSheetData(sheetData) {
   if (!Array.isArray(sheetData) || sheetData.length < 2) {
     throw new Error("❌ sheetData formati noto‘g‘ri.");
@@ -42,6 +43,7 @@ async function generateImageFromSheetData(sheetData) {
   const className = sheetData[0][0];
   const header = sheetData[1];
   const rows = sheetData.slice(2);
+  lastClassName=sheetData[0][0]
 
   // Saralash — umumiy ball bo‘yicha
   const scoreIndex = header.length - 2;
@@ -117,6 +119,7 @@ async function generateImageFromSheetData(sheetData) {
     );
 
     xPos += w;
+    return{output, className:lastClassName};
   }
 
   // =========================================
@@ -238,4 +241,4 @@ async function deleteImage(path) {
   } catch {}
 }
 
-module.exports = { generateImageFromSheetData, deleteImage };
+module.exports = { generateImageFromSheetData, deleteImage, lastClassName };
