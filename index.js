@@ -28,6 +28,14 @@ app.post(WEBHOOK_PATH, (req, res) => {
 // Admin komandalar
 require("./adminCommands")(bot);
 
+// ===============================
+// 🔥 AUTO-PING — Render uyquga ketmasin
+// ===============================
+setInterval(() => {
+  fetch(process.env.WEBHOOK_URL)
+    .then(() => console.log("♻️ Auto-ping sent"))
+    .catch((e) => console.log("Auto-ping error:", e.message));
+}, 5 * 60 * 1000); // ➝ har 8 daqiqada ping
 // Server run
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
