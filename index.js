@@ -35,7 +35,7 @@ setInterval(() => {
   fetch(process.env.WEBHOOK_URL)
     .then(() => console.log("♻️ Auto-ping sent"))
     .catch((e) => console.log("Auto-ping error:", e.message));
-}, 10 * 60 * 1000); // ➝ har 8 daqiqada ping
+}, 10 * 60 * 1000); // ➝ har 10 daqiqada ping
 // Server run
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {

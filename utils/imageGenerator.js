@@ -43,9 +43,22 @@ async function generateImageFromSheetData(sheetData) {
   const header = sheetData[1];
   const rows = sheetData.slice(2);
 
-  // Saralash — umumiy ball bo‘yicha
-  const scoreIndex = header.length - 2;
-  rows.sort((a, b) => parseFloat(b[scoreIndex]) - parseFloat(a[scoreIndex]));
+  // "Umumiy ball (200)" ustunini topamiz
+  const scoreIndex = header.indexOf("Umumiy ball (200)");
+
+  // Xatoga qarshi himoya
+  if (scoreIndex === -1) {
+    throw new Error("Umumiy ball (200) ustuni topilmadi!");
+  }
+
+  // Kelmaganlarni 0 ga aylantiruvchi funksiya
+  function toNum(v) {
+    const n = parseFloat(v);
+    return isNaN(n) ? 0 : n;
+  }
+
+  // Saralash — umumiy ball bo‘yicha (katta → kichik)
+  rows.sort((a, b) => toNum(b[scoreIndex]) - toNum(a[scoreIndex]));
 
   // 🔥 Avtomatik tartib raqam berish (№)
   for (let i = 0; i < rows.length; i++) {
