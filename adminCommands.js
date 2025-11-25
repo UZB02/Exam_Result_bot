@@ -26,10 +26,14 @@ module.exports = (bot) => {
         {
           reply_markup: {
             keyboard: [
-              [{ text: "📤 Barcha sinflarga natija yuborish" }],
-              [{ text: "📤 Bitta sinfga natija yuborish" }],
-              [{ text: "📢 Barcha guruhlarga xabar yuborish" }],
-              [{ text: "📢 Bitta sinfga xabar yuborish" }],
+              [
+                { text: "📤 Barcha sinflarga natija yuborish" },
+                { text: "📤 Bitta sinfga natija yuborish" },
+              ],
+              [
+                { text: "📢 Barcha guruhlarga xabar yuborish" },
+                { text: "📢 Bitta sinfga xabar yuborish" },
+              ],
             ],
             resize_keyboard: true,
           },
@@ -68,7 +72,6 @@ module.exports = (bot) => {
       if (!ADMIN_IDS.includes(msg.from.id.toString())) {
         return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
       }
-
       bot.emit("send_results_all", msg);
     }
   });
@@ -95,10 +98,8 @@ module.exports = (bot) => {
   });
 
   // ---------------------------------------------------
-  // 📤 2) BITTA SINFGA NATIJA YUBORISH
+  // 📤 2) BITTA SINFGA NATIJA YUBORISH INLINE
   // ---------------------------------------------------
-  let chooseClassForResult = false;
-
   bot.on("message", async (msg) => {
     if (msg.text === "📤 Bitta sinfga natija yuborish") {
       if (!ADMIN_IDS.includes(msg.from.id.toString()))
@@ -106,20 +107,74 @@ module.exports = (bot) => {
 
       const groups = await Group.find();
 
-      chooseClassForResult = true;
+      // Inline tugmalar
+      const inlineKeyboard = groups.map((g) => [
+        { text: g.name, callback_data: `result_${g.name}` },
+      ]);
 
       return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga natija yuborasiz?", {
-        reply_markup: {
-          keyboard: groups.map((g) => [{ text: g.name }]),
-          resize_keyboard: true,
-        },
+        reply_markup: { inline_keyboard: inlineKeyboard },
+      });
+    }
+  });
+
+  // ---------------------------------------------------
+  // 📢 4) BITTA SINFGA XABAR YUBORISH INLINE
+  // ---------------------------------------------------
+  let pendingMessage = null;
+
+  bot.on("message", async (msg) => {
+    if (msg.text === "📢 Bitta sinfga xabar yuborish") {
+      if (!ADMIN_IDS.includes(msg.from.id.toString()))
+        return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
+
+      // Xabarni saqlash
+      pendingMessage = null;
+      return bot.sendMessage(
+        msg.chat.id,
+        "➡️ Endi yubormoqchi bo‘lgan xabaringizni yuboring:"
+      );
+    }
+
+    // Xabarni saqlaymiz
+    if (
+      !pendingMessage &&
+      msg.text &&
+      msg.text !== "📢 Bitta sinfga xabar yuborish"
+    ) {
+      pendingMessage = msg;
+
+      const groups = await Group.find();
+
+      // Inline tugmalar
+      const inlineKeyboard = groups.map((g) => [
+        { text: g.name, callback_data: `message_${g.name}` },
+      ]);
+
+      return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga yuborasiz?", {
+        reply_markup: { inline_keyboard: inlineKeyboard },
+      });
+    }
+  });
+
+  // ---------------------------------------------------
+  // CALLBACK QUERY HANDLING
+  // ---------------------------------------------------
+  bot.on("callback_query", async (callbackQuery) => {
+    const msg = callbackQuery.message;
+    const data = callbackQuery.data;
+    const userId = callbackQuery.from.id.toString();
+
+    if (!ADMIN_IDS.includes(userId)) {
+      return bot.answerCallbackQuery(callbackQuery.id, {
+        text: "❌ Siz admin emassiz!",
       });
     }
 
-    if (chooseClassForResult) {
-      chooseClassForResult = false;
-
-      const group = await Group.findOne({ name: msg.text });
+    // Bitta sinfga natija yuborish
+    if (data.startsWith("result_")) {
+      const className = data.replace("result_", "");
+      const group = await Group.findOne({ name: className });
       if (!group)
         return bot.sendMessage(msg.chat.id, "❌ Bunday sinf topilmadi!");
 
@@ -134,10 +189,44 @@ module.exports = (bot) => {
         `✅ ${group.name} sinfiga yuborildi!`
       );
     }
+
+    // Bitta sinfga xabar yuborish
+    if (data.startsWith("message_")) {
+      const className = data.replace("message_", "");
+      const group = await Group.findOne({ name: className });
+      if (!group)
+        return bot.sendMessage(msg.chat.id, "❌ Bunday sinf topilmadi!");
+
+      if (!pendingMessage) {
+        return bot.sendMessage(
+          msg.chat.id,
+          "❌ Xabar hali saqlanmagan. Avval xabar yuboring."
+        );
+      }
+
+      // Xabarni yuborish
+      if (pendingMessage.text)
+        await bot.sendMessage(group.chatId, pendingMessage.text);
+      if (pendingMessage.photo)
+        await bot.sendPhoto(
+          group.chatId,
+          pendingMessage.photo[pendingMessage.photo.length - 1].file_id
+        );
+
+      pendingMessage = null;
+
+      return bot.sendMessage(
+        msg.chat.id,
+        `✅ Xabar *${group.name}* sinfiga yuborildi!`
+      );
+    }
+
+    // Callbackni tugatish
+    await bot.answerCallbackQuery(callbackQuery.id);
   });
 
   // ---------------------------------------------------
-  // 📢 3) BARCHA SINFLARGA XABAR YUBORISH
+  // 📢 3) BARCHA SINFLARGA XABAR YUBORISH (mavjud)
   // ---------------------------------------------------
   let broadcastAllMode = false;
 
@@ -172,68 +261,6 @@ module.exports = (bot) => {
       }
 
       return bot.sendMessage(msg.chat.id, "✅ Xabar yuborildi!");
-    }
-  });
-
-  // ---------------------------------------------------
-  // 📢 4) BITTA SINFGA XABAR YUBORISH
-  // ---------------------------------------------------
-  let chooseClassForMessage = false;
-  let pendingMessage = null;
-
-  bot.on("message", async (msg) => {
-    if (msg.text === "📢 Bitta sinfga xabar yuborish") {
-      if (!ADMIN_IDS.includes(msg.from.id.toString()))
-        return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
-
-      const groups = await Group.find();
-
-      chooseClassForMessage = true;
-
-      return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga yuborasiz?", {
-        reply_markup: {
-          keyboard: groups.map((g) => [{ text: g.name }]),
-          resize_keyboard: true,
-        },
-      });
-    }
-
-    // Xabarni avval saqlab qo‘yamiz
-    if (
-      chooseClassForMessage &&
-      !pendingMessage &&
-      msg.text !== "📢 Bitta sinfga xabar yuborish"
-    ) {
-      pendingMessage = msg;
-      return bot.sendMessage(msg.chat.id, "➡️ Endi sinf nomini yuboring:");
-    }
-
-    // Sinfni qabul qilamiz
-    if (chooseClassForMessage && pendingMessage) {
-      chooseClassForMessage = false;
-
-      const group = await Group.findOne({ name: msg.text });
-      if (!group) {
-        pendingMessage = null;
-        return bot.sendMessage(msg.chat.id, "❌ Bunday sinf yo‘q!");
-      }
-
-      // Xabarni yuborish
-      if (pendingMessage.text)
-        await bot.sendMessage(group.chatId, pendingMessage.text);
-
-      if (pendingMessage.photo)
-        await bot.sendPhoto(
-          group.chatId,
-          pendingMessage.photo[pendingMessage.photo.length - 1].file_id
-        );
-
-      pendingMessage = null;
-
-      return bot.sendMessage(
-        msg.chat.id,
-        `✅ Xabar *${group.name}* sinfiga yuborildi!`
-      );
     }
   });
 };
