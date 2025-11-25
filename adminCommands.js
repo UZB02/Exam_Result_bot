@@ -91,14 +91,12 @@ module.exports = (bot) => {
         );
         console.log("📌 Rasm yaratildi:", imagePath);
 
-        await bot.sendPhoto(group.chatId, imagePath, {
-          caption: `📊 ${sheetData[0][0]}!`,
-        });
-        // console.log(sheetData);
+        // 🔥 Yangi: 429 dan himoyalangan yuborish
+        await sendWithRetry(group.chatId, imagePath, `📊 ${sheetData[0][0]}!`);
 
         await deleteImage(imagePath);
       } catch (err) {
-        console.error("❌ XATOLIK:", err.message);
+        console.error("❌ XATOLIK:", err?.response?.body || err.message);
         await bot.sendMessage(
           group.chatId,
           "❌ Natijalarni yuborishda xatolik yuz berdi."
@@ -108,7 +106,6 @@ module.exports = (bot) => {
 
     bot.sendMessage(msg.chat.id, "✅ Barcha sinflarga natijalar yuborildi!");
   });
-
 
   // ================================================================
   // 📢 Barcha guruhlarga xabar/yuklama yuborish
