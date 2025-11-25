@@ -83,38 +83,41 @@ module.exports = (bot) => {
   // -----------------------------------
   // 📤 Barcha sinflarga natija yuborish
   // -----------------------------------
-  bot.on("message", async (msg) => {
-    if (msg.text === "📤 Barcha sinflarga natija yuborish") {
-      if (!ADMIN_IDS.includes(msg.from.id.toString()))
-        return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
+bot.on("message", async (msg) => {
+  if (msg.text === "📤 Barcha sinflarga natija yuborish") {
+    if (!ADMIN_IDS.includes(msg.from.id.toString()))
+      return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
 
-      const groups = await Group.find();
+    const groups = await Group.find();
 
-      for (const group of groups) {
-        try {
-          const sheetData = await getSheetData(group.name);
-          const imagePath = await generateImageFromSheetData(
-            sheetData,
-            group.name
-          );
-          await sendWithRetry(
-            group.chatId,
-            imagePath,
-            `${sheetData[0][0]} — Imtihon natijalari`,
-            true
-          );
-          await deleteImage(imagePath);
-        } catch (err) {
-          console.error("❌ XATOLIK:", err?.message);
-        }
+    for (const group of groups) {
+      try {
+        const sheetData = await getSheetData(group.name);
+        const imagePath = await generateImageFromSheetData(
+          sheetData,
+          group.name
+        );
+
+        await sendWithRetry(
+          group.chatId,
+          imagePath,
+          `${sheetData[0][0]} — Imtihon natijalari`,
+          true
+        );
+
+        await deleteImage(imagePath);
+      } catch (err) {
+        console.error("❌ XATOLIK:", err?.message);
       }
-
-      return bot.sendMessage(
-        msg.chat.id,
-        "✅ Barcha sinflarga natijalar yuborildi!"
-      );
     }
-  });
+
+    return bot.sendMessage(
+      msg.chat.id,
+      "✅ Barcha sinflarga natijalar yuborildi!"
+    );
+  }
+});
+
 
   // -----------------------------------
   // 📤 Bitta sinfga natija yuborish INLINE
