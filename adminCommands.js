@@ -44,137 +44,164 @@ module.exports = (bot) => {
     }
   });
 
-  // Inline tugmalarni chiroyli joylashtirish funksiyasi
+  // -----------------------------------
+  // 🔹 429 himoyalangan yuborish
+  // -----------------------------------
+  async function sendWithRetry(chatId, content, isPhoto = false) {
+    try {
+      if (isPhoto) return await bot.sendPhoto(chatId, content);
+      else return await bot.sendMessage(chatId, content);
+    } catch (err) {
+      const retry = err?.response?.body?.parameters?.retry_after;
+      if (retry) {
+        console.log(`⏳ 429! ${retry} soniya kutilyapti...`);
+        await new Promise((res) => setTimeout(res, retry * 1000));
+        return await sendWithRetry(chatId, content, isPhoto);
+      }
+      console.error("TELEGRAM ERROR:", err?.response?.body || err);
+      throw err;
+    }
+  }
+
+  // -----------------------------------
+  // Inline tugmalarni chiroyli joylashtirish
+  // -----------------------------------
   function buildInlineKeyboard(groups, prefix, perRow = 3) {
     const keyboard = [];
     let row = [];
-
     groups.forEach((g, idx) => {
       row.push({ text: g.name, callback_data: `${prefix}_${g.name}` });
-
       if ((idx + 1) % perRow === 0) {
         keyboard.push(row);
         row = [];
       }
     });
-
-    if (row.length) keyboard.push(row); // qolgan tugmalar
+    if (row.length) keyboard.push(row);
     return keyboard;
   }
 
   // -----------------------------------
-  // 🔥 429 holdan himoya qilingan yuborish
+  // 📤 Barcha sinflarga natija yuborish
   // -----------------------------------
-async function sendWithRetry(chatId, imagePath = null, caption = "") {
-  try {
-    if (imagePath) {
-      return await bot.sendPhoto(chatId, imagePath, { caption });
-    } else {
-      return await bot.sendMessage(chatId, caption);
-    }
-  } catch (err) {
-    const retry = err?.response?.body?.parameters?.retry_after;
-    if (retry) {
-      console.log(`⏳ 429! ${retry} soniya kutilyapti...`);
-      await new Promise((res) => setTimeout(res, retry * 1000));
-      return await sendWithRetry(chatId, imagePath, caption);
-    }
-    console.error("TELEGRAM ERROR:", err?.response?.body || err);
-    throw err;
-  }
-}
-
-  // ---------------------------------------------------
-  // 📤 1) BARCHA SINFLARGA NATIJA YUBORISH
-  // ---------------------------------------------------
-  bot.on("message", (msg) => {
+  bot.on("message", async (msg) => {
     if (msg.text === "📤 Barcha sinflarga natija yuborish") {
-      if (!ADMIN_IDS.includes(msg.from.id.toString())) {
+      if (!ADMIN_IDS.includes(msg.from.id.toString()))
         return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
+
+      const groups = await Group.find();
+
+      for (const group of groups) {
+        try {
+          const sheetData = await getSheetData(group.name);
+          const imagePath = await generateImageFromSheetData(
+            sheetData,
+            group.name
+          );
+          await sendWithRetry(group.chatId, imagePath, true);
+          await deleteImage(imagePath);
+        } catch (err) {
+          console.error("❌ XATOLIK:", err?.message);
+        }
       }
-      bot.emit("send_results_all", msg);
+
+      return bot.sendMessage(
+        msg.chat.id,
+        "✅ Barcha sinflarga natijalar yuborildi!"
+      );
     }
   });
 
-  bot.on("send_results_all", async (msg) => {
-    const groups = await Group.find();
+  // -----------------------------------
+  // 📤 Bitta sinfga natija yuborish INLINE
+  // -----------------------------------
+  bot.on("message", async (msg) => {
+    if (msg.text === "📤 Bitta sinfga natija yuborish") {
+      if (!ADMIN_IDS.includes(msg.from.id.toString()))
+        return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
 
-    for (const group of groups) {
-      try {
-        const sheetData = await getSheetData(group.name);
-        const imagePath = await generateImageFromSheetData(
-          sheetData,
-          group.name
-        );
+      const groups = await Group.find();
+      const inlineKeyboard = buildInlineKeyboard(groups, "result", 3);
 
-        await sendWithRetry(group.chatId, imagePath, `📊 ${group.name}`);
-        await deleteImage(imagePath);
-      } catch (err) {
-        console.error("❌ XATOLIK:", err?.message);
-      }
+      return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga natija yuborasiz?", {
+        reply_markup: { inline_keyboard: inlineKeyboard },
+      });
     }
-
-    bot.sendMessage(msg.chat.id, "✅ Barcha sinflarga natijalar yuborildi!");
   });
 
-  // ---------------------------------------------------
-  // 📤 2) BITTA SINFGA NATIJA YUBORISH INLINE
-  // ---------------------------------------------------
-bot.on("message", async (msg) => {
-  if (msg.text === "📤 Bitta sinfga natija yuborish") {
-    if (!ADMIN_IDS.includes(msg.from.id.toString()))
-      return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
-
-    const groups = await Group.find();
-
-    const inlineKeyboard = buildInlineKeyboard(groups, "result", 3); // 3 ta tugma bir qator
-
-    return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga natija yuborasiz?", {
-      reply_markup: { inline_keyboard: inlineKeyboard },
-    });
-  }
-});
-
-
-  // ---------------------------------------------------
-  // 📢 4) BITTA SINFGA XABAR YUBORISH INLINE
-  // ---------------------------------------------------
+  // -----------------------------------
+  // 📢 Bitta sinfga xabar yuborish INLINE
+  // -----------------------------------
   let pendingMessage = null;
 
- bot.on("message", async (msg) => {
-   if (msg.text === "📢 Bitta sinfga xabar yuborish") {
-     if (!ADMIN_IDS.includes(msg.from.id.toString()))
-       return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
+  bot.on("message", async (msg) => {
+    if (msg.text === "📢 Bitta sinfga xabar yuborish") {
+      if (!ADMIN_IDS.includes(msg.from.id.toString()))
+        return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
 
-     pendingMessage = null;
-     return bot.sendMessage(
-       msg.chat.id,
-       "➡️ Endi yubormoqchi bo‘lgan xabaringizni yuboring:"
-     );
-   }
+      pendingMessage = null;
+      return bot.sendMessage(
+        msg.chat.id,
+        "➡️ Endi yubormoqchi bo‘lgan xabaringizni yuboring:"
+      );
+    }
 
-   // Xabarni saqlaymiz
-   if (
-     !pendingMessage &&
-     msg.text &&
-     msg.text !== "📢 Bitta sinfga xabar yuborish"
-   ) {
-     pendingMessage = msg;
+    if (
+      !pendingMessage &&
+      msg.text &&
+      msg.text !== "📢 Bitta sinfga xabar yuborish"
+    ) {
+      pendingMessage = msg;
+      const groups = await Group.find();
+      const inlineKeyboard = buildInlineKeyboard(groups, "message", 3);
 
-     const groups = await Group.find();
+      return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga yuborasiz?", {
+        reply_markup: { inline_keyboard: inlineKeyboard },
+      });
+    }
+  });
 
-     const inlineKeyboard = buildInlineKeyboard(groups, "message", 3); // 3 ta tugma bir qator
+  // -----------------------------------
+  // 📢 Barcha guruhlarga xabar yuborish
+  // -----------------------------------
+  let broadcastAllMode = false;
 
-     return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga yuborasiz?", {
-       reply_markup: { inline_keyboard: inlineKeyboard },
-     });
-   }
- });
+  bot.on("message", async (msg) => {
+    if (msg.text === "📢 Barcha guruhlarga xabar yuborish") {
+      if (!ADMIN_IDS.includes(msg.from.id.toString()))
+        return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
 
+      broadcastAllMode = true;
+      return bot.sendMessage(
+        msg.chat.id,
+        "📢 Yuborayotgan xabaringiz barcha guruhlarga tarqatiladi."
+      );
+    }
 
-  // ---------------------------------------------------
+    if (broadcastAllMode) {
+      broadcastAllMode = false;
+
+      const groups = await Group.find();
+      for (const group of groups) {
+        try {
+          // Text yuborish
+          if (msg.text) await sendWithRetry(group.chatId, msg.text, false);
+          // Rasm yuborish
+          if (msg.photo) {
+            const fileId = msg.photo[msg.photo.length - 1].file_id;
+            await sendWithRetry(group.chatId, fileId, true);
+          }
+        } catch (err) {
+          console.log("Xabar yuborishda xato:", err.message);
+        }
+      }
+
+      return bot.sendMessage(msg.chat.id, "✅ Xabar yuborildi!");
+    }
+  });
+
+  // -----------------------------------
   // CALLBACK QUERY HANDLING
-  // ---------------------------------------------------
+  // -----------------------------------
   bot.on("callback_query", async (callbackQuery) => {
     const msg = callbackQuery.message;
     const data = callbackQuery.data;
@@ -195,8 +222,7 @@ bot.on("message", async (msg) => {
 
       const sheetData = await getSheetData(group.name);
       const imagePath = await generateImageFromSheetData(sheetData, group.name);
-
-      await sendWithRetry(group.chatId, imagePath, `📊 ${group.name}`);
+      await sendWithRetry(group.chatId, imagePath, true);
       await deleteImage(imagePath);
 
       return bot.sendMessage(
@@ -219,14 +245,13 @@ bot.on("message", async (msg) => {
         );
       }
 
-      // Xabarni yuborish
       if (pendingMessage.text)
-        await bot.sendMessage(group.chatId, pendingMessage.text);
-      if (pendingMessage.photo)
-        await bot.sendPhoto(
-          group.chatId,
-          pendingMessage.photo[pendingMessage.photo.length - 1].file_id
-        );
+        await sendWithRetry(group.chatId, pendingMessage.text, false);
+      if (pendingMessage.photo) {
+        const fileId =
+          pendingMessage.photo[pendingMessage.photo.length - 1].file_id;
+        await sendWithRetry(group.chatId, fileId, true);
+      }
 
       pendingMessage = null;
 
@@ -236,48 +261,6 @@ bot.on("message", async (msg) => {
       );
     }
 
-    // Callbackni tugatish
     await bot.answerCallbackQuery(callbackQuery.id);
   });
-
-  // ---------------------------------------------------
-  // 📢 3) BARCHA SINFLARGA XABAR YUBORISH (mavjud)
-  // ---------------------------------------------------
-  let broadcastAllMode = false;
-
- bot.on("message", async (msg) => {
-   if (msg.text === "📢 Barcha guruhlarga xabar yuborish") {
-     if (!ADMIN_IDS.includes(msg.from.id.toString()))
-       return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
-
-     broadcastAllMode = true;
-     return bot.sendMessage(
-       msg.chat.id,
-       "📢 Yuborayotgan xabaringiz barcha guruhlarga tarqatiladi."
-     );
-   }
-
-   if (broadcastAllMode) {
-     broadcastAllMode = false;
-
-     const groups = await Group.find();
-
-     for (const group of groups) {
-       try {
-         // Text yuborish
-         if (msg.text) await sendWithRetry(group.chatId, msg.text, false);
-
-         // Rasm yuborish (oxirgi rasm)
-         if (msg.photo) {
-           const fileId = msg.photo[msg.photo.length - 1].file_id;
-           await sendWithRetry(group.chatId, fileId, true);
-         }
-       } catch (err) {
-         console.log("Xabar yuborishda xato:", err.message);
-       }
-     }
-
-     return bot.sendMessage(msg.chat.id, "✅ Xabar yuborildi!");
-   }
- });
 };

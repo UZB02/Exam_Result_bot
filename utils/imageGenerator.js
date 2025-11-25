@@ -47,9 +47,21 @@ async function generateImageFromSheetData(sheetData) {
   const scoreIndex = header.length - 2; // "Umumiy ball" ustuni
   rows.sort((a, b) => parseFloat(b[scoreIndex]) - parseFloat(a[scoreIndex]));
 
-  // 🔥 Avtomatik tartib raqam berish (№)
+  // 🔥 Avtomatik tartib raqam berish (№) — eng yuqori ball bir xil bo'lsa, raqam ham bir xil bo'ladi
+  let currentRank = 1;
   for (let i = 0; i < rows.length; i++) {
-    rows[i][0] = i + 1;
+    if (i === 0) {
+      rows[i][0] = currentRank;
+    } else {
+      const prevScore = parseFloat(rows[i - 1][scoreIndex]);
+      const currentScore = parseFloat(rows[i][scoreIndex]);
+      if (currentScore === prevScore) {
+        rows[i][0] = currentRank;
+      } else {
+        currentRank = i + 1;
+        rows[i][0] = currentRank;
+      }
+    }
   }
 
   // 🔹 Eng yuqori ballni aniqlaymiz
@@ -210,6 +222,7 @@ async function generateImageFromSheetData(sheetData) {
 
   return output;
 }
+
 
 
 // FAYL O‘CHIRISH
