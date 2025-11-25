@@ -47,27 +47,33 @@ async function generateImageFromSheetData(sheetData) {
   const scoreIndex = header.length - 2; // "Umumiy ball" ustuni
   rows.sort((a, b) => parseFloat(b[scoreIndex]) - parseFloat(a[scoreIndex]));
 
-  // 🔥 Avtomatik tartib raqam berish (№) — eng yuqori ball bir xil bo'lsa, raqam ham bir xil bo'ladi
- let currentRank = 1;
- let prevRank = 0;
+  // ===============================
+  // ✅ TO‘G‘RI TARTIB RAQAM (STANDARD RANK)
+  // ===============================
+  let rank = 1;
+  let ties = 0;
+  let prevScore = null;
 
- for (let i = 0; i < rows.length; i++) {
-   const currentScore = parseFloat(rows[i][scoreIndex]);
+  for (let i = 0; i < rows.length; i++) {
+    const score = parseFloat(rows[i][scoreIndex]);
 
-   if (i === 0) {
-     rows[i][0] = currentRank;
-     prevRank = currentRank;
-   } else {
-     const prevScore = parseFloat(rows[i - 1][scoreIndex]);
-     if (currentScore === prevScore) {
-       rows[i][0] = prevRank; // teng ball — avvalgi o‘rin bilan bir xil
-     } else {
-       currentRank = prevRank + 1; // keyingi raqam oldingisidan 1 ko‘p
-       rows[i][0] = currentRank;
-       prevRank = currentRank;
-     }
-   }
- }
+    if (i === 0) {
+      rows[i][0] = rank;
+      prevScore = score;
+      ties = 1;
+    } else {
+      if (score === prevScore) {
+        rows[i][0] = rank; // teng ball → bir xil o‘rin
+        ties++; // nechta tenglik borligini sanaymiz
+      } else {
+        rank = rank + ties; // keyingi o‘rin tengliklar soniga qarab oshadi
+        rows[i][0] = rank;
+        ties = 1; // qayta sanash
+      }
+      prevScore = score;
+    }
+  }
+  // ===============================
 
   // 🔹 Eng yuqori ballni aniqlaymiz
   let maxScore = -Infinity;
@@ -137,20 +143,18 @@ async function generateImageFromSheetData(sheetData) {
     const rowY = headerY + headerHeight + r * rowHeight;
     xPos = tableX;
 
-    // 🔹 Agar umumiy ball eng yuqori bo‘lsa, sariq rang
     const isTopScore = parseFloat(row[scoreIndex]) === maxScore;
 
     for (let c = 0; c < header.length; c++) {
       const w = colWidths[c];
       const text = String(row[c] ?? "");
 
-      ctx.fillStyle = isTopScore ? "#ffe082" : "#ffffff"; // sariq qator
+      ctx.fillStyle = isTopScore ? "#ffe082" : "#ffffff";
       ctx.fillRect(xPos, rowY, w, rowHeight);
 
       ctx.strokeStyle = "#999";
       ctx.strokeRect(xPos, rowY, w, rowHeight);
 
-      // Matn rangini aniqlash
       const percentIndex = header.length - 1;
 
       if (
@@ -159,7 +163,7 @@ async function generateImageFromSheetData(sheetData) {
         c !== scoreIndex &&
         c !== percentIndex
       ) {
-        ctx.fillStyle = "#d00000"; // fan ustuni 50 bo‘lsa qizil
+        ctx.fillStyle = "#d00000";
         ctx.font = "bold 24px Arial";
       } else {
         ctx.fillStyle = "#000";
@@ -190,7 +194,6 @@ async function generateImageFromSheetData(sheetData) {
     }
   });
 
-  // Fanlar samaradorligi
   const subjectStartIndex = 2;
   const subjectEndIndex = header.length - 3;
   let subjectPercent = 0;
@@ -221,12 +224,12 @@ async function generateImageFromSheetData(sheetData) {
     height - 60
   );
 
-  // PNG saqlash
   const output = `./${className}.png`;
   fs.writeFileSync(output, await canvas.toBuffer("png"));
 
   return output;
 }
+
 
 
 
