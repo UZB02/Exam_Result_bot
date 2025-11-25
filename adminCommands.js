@@ -44,6 +44,24 @@ module.exports = (bot) => {
     }
   });
 
+  // Inline tugmalarni chiroyli joylashtirish funksiyasi
+  function buildInlineKeyboard(groups, prefix, perRow = 3) {
+    const keyboard = [];
+    let row = [];
+
+    groups.forEach((g, idx) => {
+      row.push({ text: g.name, callback_data: `${prefix}_${g.name}` });
+
+      if ((idx + 1) % perRow === 0) {
+        keyboard.push(row);
+        row = [];
+      }
+    });
+
+    if (row.length) keyboard.push(row); // qolgan tugmalar
+    return keyboard;
+  }
+
   // -----------------------------------
   // 🔥 429 holdan himoya qilingan yuborish
   // -----------------------------------
@@ -100,62 +118,57 @@ module.exports = (bot) => {
   // ---------------------------------------------------
   // 📤 2) BITTA SINFGA NATIJA YUBORISH INLINE
   // ---------------------------------------------------
-  bot.on("message", async (msg) => {
-    if (msg.text === "📤 Bitta sinfga natija yuborish") {
-      if (!ADMIN_IDS.includes(msg.from.id.toString()))
-        return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
+bot.on("message", async (msg) => {
+  if (msg.text === "📤 Bitta sinfga natija yuborish") {
+    if (!ADMIN_IDS.includes(msg.from.id.toString()))
+      return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
 
-      const groups = await Group.find();
+    const groups = await Group.find();
 
-      // Inline tugmalar
-      const inlineKeyboard = groups.map((g) => [
-        { text: g.name, callback_data: `result_${g.name}` },
-      ]);
+    const inlineKeyboard = buildInlineKeyboard(groups, "result", 3); // 3 ta tugma bir qator
 
-      return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga natija yuborasiz?", {
-        reply_markup: { inline_keyboard: inlineKeyboard },
-      });
-    }
-  });
+    return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga natija yuborasiz?", {
+      reply_markup: { inline_keyboard: inlineKeyboard },
+    });
+  }
+});
+
 
   // ---------------------------------------------------
   // 📢 4) BITTA SINFGA XABAR YUBORISH INLINE
   // ---------------------------------------------------
   let pendingMessage = null;
 
-  bot.on("message", async (msg) => {
-    if (msg.text === "📢 Bitta sinfga xabar yuborish") {
-      if (!ADMIN_IDS.includes(msg.from.id.toString()))
-        return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
+ bot.on("message", async (msg) => {
+   if (msg.text === "📢 Bitta sinfga xabar yuborish") {
+     if (!ADMIN_IDS.includes(msg.from.id.toString()))
+       return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
 
-      // Xabarni saqlash
-      pendingMessage = null;
-      return bot.sendMessage(
-        msg.chat.id,
-        "➡️ Endi yubormoqchi bo‘lgan xabaringizni yuboring:"
-      );
-    }
+     pendingMessage = null;
+     return bot.sendMessage(
+       msg.chat.id,
+       "➡️ Endi yubormoqchi bo‘lgan xabaringizni yuboring:"
+     );
+   }
 
-    // Xabarni saqlaymiz
-    if (
-      !pendingMessage &&
-      msg.text &&
-      msg.text !== "📢 Bitta sinfga xabar yuborish"
-    ) {
-      pendingMessage = msg;
+   // Xabarni saqlaymiz
+   if (
+     !pendingMessage &&
+     msg.text &&
+     msg.text !== "📢 Bitta sinfga xabar yuborish"
+   ) {
+     pendingMessage = msg;
 
-      const groups = await Group.find();
+     const groups = await Group.find();
 
-      // Inline tugmalar
-      const inlineKeyboard = groups.map((g) => [
-        { text: g.name, callback_data: `message_${g.name}` },
-      ]);
+     const inlineKeyboard = buildInlineKeyboard(groups, "message", 3); // 3 ta tugma bir qator
 
-      return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga yuborasiz?", {
-        reply_markup: { inline_keyboard: inlineKeyboard },
-      });
-    }
-  });
+     return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga yuborasiz?", {
+       reply_markup: { inline_keyboard: inlineKeyboard },
+     });
+   }
+ });
+
 
   // ---------------------------------------------------
   // CALLBACK QUERY HANDLING
