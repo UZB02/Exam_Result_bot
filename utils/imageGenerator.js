@@ -44,7 +44,7 @@ async function generateImageFromSheetData(sheetData) {
   const rows = sheetData.slice(2);
 
   // Saralash — umumiy ball bo‘yicha
-  const scoreIndex = header.length - 2;
+  const scoreIndex = header.length - 2; // "Umumiy ball" ustuni
   rows.sort((a, b) => parseFloat(b[scoreIndex]) - parseFloat(a[scoreIndex]));
 
   // 🔥 Avtomatik tartib raqam berish (№)
@@ -52,14 +52,18 @@ async function generateImageFromSheetData(sheetData) {
     rows[i][0] = i + 1;
   }
 
-  // TEMPORARY canvas — ustun kengligini hisoblash uchun
+  // 🔹 Eng yuqori ballni aniqlaymiz
+  let maxScore = -Infinity;
+  rows.forEach((r) => {
+    const score = parseFloat(r[scoreIndex]);
+    if (!isNaN(score) && score > maxScore) maxScore = score;
+  });
+
   const tempCanvas = new Canvas(2000, 2000);
   const tempCtx = tempCanvas.getContext("2d");
-
   const colWidths = calculateDynamicColumnWidths(tempCtx, header, rows);
   const tableWidth = colWidths.reduce((sum, w) => sum + w, 0);
 
-  // Jadval dizayn o‘lchamlari
   const titleHeight = 90;
   const headerHeight = 65;
   const rowHeight = 58;
@@ -69,19 +73,14 @@ async function generateImageFromSheetData(sheetData) {
     titleHeight + headerHeight + rows.length * rowHeight + footerHeight;
   const width = tableWidth + 80;
 
-  // Asosiy canvas
   const canvas = new Canvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  // =========================================
-  // 3️⃣ BACKGROUND
-  // =========================================
+  // BACKGROUND
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
-  // =========================================
-  // 4️⃣ BANNER — CLASS NAME
-  // =========================================
+  // BANNER
   ctx.fillStyle = "#0f2f66";
   ctx.fillRect(0, 0, width, titleHeight);
 
@@ -90,16 +89,13 @@ async function generateImageFromSheetData(sheetData) {
   ctx.textAlign = "center";
   ctx.fillText(className, width / 2, 58);
 
-  // =========================================
-  // 5️⃣ HEADER
-  // =========================================
+  // HEADER
   const tableX = 40;
   let xPos = tableX;
   const headerY = titleHeight;
 
   for (let i = 0; i < header.length; i++) {
     const w = colWidths[i];
-
     ctx.fillStyle = "#dfe8f0";
     ctx.fillRect(xPos, headerY, w, headerHeight);
 
@@ -109,7 +105,6 @@ async function generateImageFromSheetData(sheetData) {
     ctx.fillStyle = "#000";
     ctx.font = "bold 24px Arial";
     ctx.textAlign = "center";
-
     ctx.fillText(
       String(header[i]),
       xPos + w / 2,
@@ -119,61 +114,54 @@ async function generateImageFromSheetData(sheetData) {
     xPos += w;
   }
 
-  // =========================================
-  // 6️⃣ BODY (ROWS)
-  // =========================================
+  // BODY
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r];
     const rowY = headerY + headerHeight + r * rowHeight;
-
     xPos = tableX;
+
+    // 🔹 Agar umumiy ball eng yuqori bo‘lsa, sariq rang
+    const isTopScore = parseFloat(row[scoreIndex]) === maxScore;
 
     for (let c = 0; c < header.length; c++) {
       const w = colWidths[c];
       const text = String(row[c] ?? "");
 
-      // Top-1 sariq rang
-      ctx.fillStyle = r === 0 ? "#ffe082" : "#ffffff";
+      ctx.fillStyle = isTopScore ? "#ffe082" : "#ffffff"; // sariq qator
       ctx.fillRect(xPos, rowY, w, rowHeight);
 
       ctx.strokeStyle = "#999";
       ctx.strokeRect(xPos, rowY, w, rowHeight);
 
-      // Matnni joylash
-      ctx.textAlign = "center";
-
-      const totalScoreIndex = header.length - 2; // Umumiy ball
-      const percentIndex = header.length - 1; // %
+      // Matn rangini aniqlash
+      const percentIndex = header.length - 1;
 
       if (
         !isNaN(text) &&
         Number(text) === 50 &&
-        c !== totalScoreIndex &&
+        c !== scoreIndex &&
         c !== percentIndex
       ) {
-        // faqat fanlar ustuni 50 bo‘lsa qizil
-        ctx.fillStyle = "#d00000";
+        ctx.fillStyle = "#d00000"; // fan ustuni 50 bo‘lsa qizil
         ctx.font = "bold 24px Arial";
       } else {
         ctx.fillStyle = "#000";
         ctx.font = "22px Arial";
       }
 
+      ctx.textAlign = "center";
       ctx.fillText(text, xPos + w / 2, rowY + rowHeight / 2 + 7);
 
       xPos += w;
     }
   }
 
-  // =========================================
-  // 7️⃣ FOOTER
-  // =========================================
+  // FOOTER
   ctx.fillStyle = "#0f2f66";
   ctx.font = "bold 24px Arial";
   ctx.textAlign = "left";
 
   const percentIndex = header.length - 1;
-
   let totalPercent = 0;
   let count = 0;
 
@@ -185,28 +173,24 @@ async function generateImageFromSheetData(sheetData) {
     }
   });
 
-  // const classEfficiency = count > 0 ? (totalPercent / count).toFixed(1) : 0;
-
-  const subjectStartIndex = 2; // 3-ustundan boshlab fanlar
-  const subjectEndIndex = header.length - 3; // "Umumiy ball" va "%" ni hisobga olmaymiz
-
+  // Fanlar samaradorligi
+  const subjectStartIndex = 2;
+  const subjectEndIndex = header.length - 3;
   let subjectPercent = 0;
   let subjectCount = 0;
 
   for (let i = subjectStartIndex; i <= subjectEndIndex; i++) {
     let total = 0;
-    let count = 0;
-
+    let subCount = 0;
     rows.forEach((r) => {
       const s = parseFloat(r[i]);
       if (!isNaN(s)) {
         total += (s / 50) * 100;
-        count++;
+        subCount++;
       }
     });
-
-    if (count > 0) {
-      subjectPercent += total / count;
+    if (subCount > 0) {
+      subjectPercent += total / subCount;
       subjectCount++;
     }
   }
@@ -220,16 +204,13 @@ async function generateImageFromSheetData(sheetData) {
     height - 60
   );
 
-  // ctx.fillText(`Sinf samaradorligi: ${classEfficiency}%`, tableX, height - 25);
-
-  // =========================================
-  // 8️⃣ PNG holatida saqlash
-  // =========================================
+  // PNG saqlash
   const output = `./${className}.png`;
   fs.writeFileSync(output, await canvas.toBuffer("png"));
 
   return output;
 }
+
 
 // FAYL O‘CHIRISH
 async function deleteImage(path) {
