@@ -44,11 +44,11 @@ async function generateImageFromSheetData(sheetData) {
   const rows = sheetData.slice(2);
 
   // "Umumiy ball (200)" ustunini topamiz
-  const scoreIndex = header.indexOf("Umumiy ball (200)");
+  const scoreIndex = header.indexOf("Umumiy ball");
 
   // Xatoga qarshi himoya
   if (scoreIndex === -1) {
-    throw new Error("Umumiy ball (200) ustuni topilmadi!");
+    throw new Error("Umumiy ball ustuni topilmadi!");
   }
 
   // Kelmaganlarni 0 ga aylantiruvchi funksiya
