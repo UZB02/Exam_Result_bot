@@ -67,6 +67,26 @@ module.exports = (bot) => {
   });
 
   // -----------------------------------
+  // 🔥 429 xatosiz yuborish funksiyasi
+  // -----------------------------------
+  async function sendWithRetry(chatId, imagePath, caption = "") {
+    try {
+      return await bot.sendPhoto(chatId, imagePath, { caption });
+    } catch (err) {
+      const retry = err?.response?.body?.parameters?.retry_after;
+
+      if (retry) {
+        console.log(`⏳ 429! ${retry} soniya kutilyapti...`);
+        await new Promise((res) => setTimeout(res, retry * 1000));
+        return await sendWithRetry(chatId, imagePath, caption);
+      }
+
+      console.error("TELEGRAM ERROR:", err?.response?.body || err);
+      throw err;
+    }
+  }
+
+  // -----------------------------------
   // 🔥 Natijalarni barcha sinflarga yuborish
   // -----------------------------------
   bot.on("send_results_command", async (msg) => {
