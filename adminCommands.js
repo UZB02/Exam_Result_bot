@@ -28,7 +28,7 @@ module.exports = (bot) => {
             keyboard: [
               [
                 { text: "📤 Barcha sinflarga natija yuborish" },
-                { text: "📤 Bitta sinfga natija yuborish" },
+                // { text: "📤 Bitta sinfga natija yuborish" },
               ],
               [
                 { text: "📢 Barcha guruhlarga xabar yuborish" },
@@ -43,7 +43,6 @@ module.exports = (bot) => {
       bot.sendMessage(chatId, "Assalomu alaykum! Botga xush kelibsiz.");
     }
   });
-
   // -----------------------------------
   // 🔹 429 himoyalangan yuborish
   // -----------------------------------
@@ -67,7 +66,6 @@ async function sendWithRetry(chatId, content, caption = "", isPhoto = false) {
     throw err;
   }
 }
-
   // -----------------------------------
   // Inline tugmalarni chiroyli joylashtirish
   // -----------------------------------
@@ -84,7 +82,6 @@ async function sendWithRetry(chatId, content, caption = "", isPhoto = false) {
     if (row.length) keyboard.push(row);
     return keyboard;
   }
-
   // -----------------------------------
   // 📤 Barcha sinflarga natija yuborish
   // -----------------------------------
@@ -92,9 +89,7 @@ bot.on("message", async (msg) => {
   if (msg.text === "📤 Barcha sinflarga natija yuborish") {
     if (!ADMIN_IDS.includes(msg.from.id.toString()))
       return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
-
     const groups = await Group.find();
-
     for (const group of groups) {
       try {
         const sheetData = await getSheetData(group.name);
@@ -102,45 +97,39 @@ bot.on("message", async (msg) => {
           sheetData,
           group.name
         );
-
         await sendWithRetry(
           group.chatId,
           imagePath,
-          `${sheetData[0][0]} — Imtihon natijalari`,
+          `${sheetData[0][0]}!`,
           true
         );
-
         await deleteImage(imagePath);
       } catch (err) {
         console.error("❌ XATOLIK:", err?.message);
       }
     }
-
     return bot.sendMessage(
       msg.chat.id,
       "✅ Barcha sinflarga natijalar yuborildi!"
     );
   }
 });
-
-
   // -----------------------------------
   // 📤 Bitta sinfga natija yuborish INLINE
   // -----------------------------------
-  bot.on("message", async (msg) => {
-    if (msg.text === "📤 Bitta sinfga natija yuborish") {
-      if (!ADMIN_IDS.includes(msg.from.id.toString()))
-        return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
+  // bot.on("message", async (msg) => {
+  //   if (msg.text === "📤 Bitta sinfga natija yuborish") {
+  //     if (!ADMIN_IDS.includes(msg.from.id.toString()))
+  //       return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
 
-      const groups = await Group.find();
-      const inlineKeyboard = buildInlineKeyboard(groups, "result", 3);
+  //     const groups = await Group.find();
+  //     const inlineKeyboard = buildInlineKeyboard(groups, "result", 3);
 
-      return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga natija yuborasiz?", {
-        reply_markup: { inline_keyboard: inlineKeyboard },
-      });
-    }
-  });
-
+  //     return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga natija yuborasiz?", {
+  //       reply_markup: { inline_keyboard: inlineKeyboard },
+  //     });
+  //   }
+  // });
   // -----------------------------------
   // 📢 Bitta sinfga xabar yuborish INLINE
   // -----------------------------------
@@ -172,7 +161,6 @@ bot.on("message", async (msg) => {
       });
     }
   });
-
   // -----------------------------------
   // 📢 Barcha guruhlarga xabar yuborish
   // -----------------------------------
@@ -182,14 +170,12 @@ bot.on("message", async (msg) => {
     if (msg.text === "📢 Barcha guruhlarga xabar yuborish") {
       if (!ADMIN_IDS.includes(msg.from.id.toString()))
         return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
-
       broadcastAllMode = true;
       return bot.sendMessage(
         msg.chat.id,
         "📢 Yuborayotgan xabaringiz barcha guruhlarga tarqatiladi."
       );
     }
-
     if (broadcastAllMode) {
       broadcastAllMode = false;
 
@@ -211,7 +197,6 @@ bot.on("message", async (msg) => {
       return bot.sendMessage(msg.chat.id, "✅ Xabar yuborildi!");
     }
   });
-
   // -----------------------------------
   // CALLBACK QUERY HANDLING
   // -----------------------------------
@@ -225,25 +210,23 @@ bot.on("message", async (msg) => {
         text: "❌ Siz admin emassiz!",
       });
     }
-
     // Bitta sinfga natija yuborish
-    if (data.startsWith("result_")) {
-      const className = data.replace("result_", "");
-      const group = await Group.findOne({ name: className });
-      if (!group)
-        return bot.sendMessage(msg.chat.id, "❌ Bunday sinf topilmadi!");
+    // if (data.startsWith("result_")) {
+    //   const className = data.replace("result_", "");
+    //   const group = await Group.findOne({ name: className });
+    //   if (!group)
+    //     return bot.sendMessage(msg.chat.id, "❌ Bunday sinf topilmadi!");
 
-      const sheetData = await getSheetData(group.name);
-      const imagePath = await generateImageFromSheetData(sheetData, group.name);
-      await sendWithRetry(group.chatId, imagePath, true);
-      await deleteImage(imagePath);
+    //   const sheetData = await getSheetData(group.name);
+    //   const imagePath = await generateImageFromSheetData(sheetData, group.name);
+    //   await sendWithRetry(group.chatId, imagePath, true);
+    //   await deleteImage(imagePath);
 
-      return bot.sendMessage(
-        msg.chat.id,
-        `✅ ${group.name} sinfiga yuborildi!`
-      );
-    }
-
+    //   return bot.sendMessage(
+    //     msg.chat.id,
+    //     `✅ ${group.name} sinfiga yuborildi!`
+    //   );
+    // }
     // Bitta sinfga xabar yuborish
     if (data.startsWith("message_")) {
       const className = data.replace("message_", "");
@@ -257,7 +240,6 @@ bot.on("message", async (msg) => {
           "❌ Xabar hali saqlanmagan. Avval xabar yuboring."
         );
       }
-
       if (pendingMessage.text)
         await sendWithRetry(group.chatId, pendingMessage.text, false);
       if (pendingMessage.photo) {
@@ -273,7 +255,6 @@ bot.on("message", async (msg) => {
         `✅ Xabar *${group.name}* sinfiga yuborildi!`
       );
     }
-
     await bot.answerCallbackQuery(callbackQuery.id);
   });
 };
