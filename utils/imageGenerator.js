@@ -48,10 +48,9 @@ async function generateImageFromSheetData(sheetData) {
   rows.sort((a, b) => parseFloat(b[scoreIndex]) - parseFloat(a[scoreIndex]));
 
   // ===============================
-  // ✅ TO‘G‘RI TARTIB RAQAM (STANDARD RANK)
+  // ✅ TO‘G‘RI TARTIB RAQAM — COMPETITION RANKING
   // ===============================
   let rank = 1;
-  let ties = 0;
   let prevScore = null;
 
   for (let i = 0; i < rows.length; i++) {
@@ -60,15 +59,14 @@ async function generateImageFromSheetData(sheetData) {
     if (i === 0) {
       rows[i][0] = rank;
       prevScore = score;
-      ties = 1;
     } else {
       if (score === prevScore) {
-        rows[i][0] = rank; // teng ball → bir xil o‘rin
-        ties++; // nechta tenglik borligini sanaymiz
-      } else {
-        rank = rank + ties; // keyingi o‘rin tengliklar soniga qarab oshadi
+        // ✔ teng ball → bir xil raqam
         rows[i][0] = rank;
-        ties = 1; // qayta sanash
+      } else {
+        // ✔ yangi o‘rin — index + 1
+        rank = i + 1;
+        rows[i][0] = rank;
       }
       prevScore = score;
     }
