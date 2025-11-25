@@ -65,22 +65,24 @@ module.exports = (bot) => {
   // -----------------------------------
   // 🔥 429 holdan himoya qilingan yuborish
   // -----------------------------------
-  async function sendWithRetry(chatId, imagePath, caption = "") {
-    try {
+async function sendWithRetry(chatId, imagePath = null, caption = "") {
+  try {
+    if (imagePath) {
       return await bot.sendPhoto(chatId, imagePath, { caption });
-    } catch (err) {
-      const retry = err?.response?.body?.parameters?.retry_after;
-
-      if (retry) {
-        console.log(`⏳ 429! ${retry} soniya kutilyapti...`);
-        await new Promise((res) => setTimeout(res, retry * 1000));
-        return await sendWithRetry(chatId, imagePath, caption);
-      }
-
-      console.error("TELEGRAM ERROR:", err?.response?.body || err);
-      throw err;
+    } else {
+      return await bot.sendMessage(chatId, caption);
     }
+  } catch (err) {
+    const retry = err?.response?.body?.parameters?.retry_after;
+    if (retry) {
+      console.log(`⏳ 429! ${retry} soniya kutilyapti...`);
+      await new Promise((res) => setTimeout(res, retry * 1000));
+      return await sendWithRetry(chatId, imagePath, caption);
+    }
+    console.error("TELEGRAM ERROR:", err?.response?.body || err);
+    throw err;
   }
+}
 
   // ---------------------------------------------------
   // 📤 1) BARCHA SINFLARGA NATIJA YUBORISH
@@ -243,37 +245,39 @@ bot.on("message", async (msg) => {
   // ---------------------------------------------------
   let broadcastAllMode = false;
 
-  bot.on("message", async (msg) => {
-    if (msg.text === "📢 Barcha guruhlarga xabar yuborish") {
-      if (!ADMIN_IDS.includes(msg.from.id.toString()))
-        return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
+ bot.on("message", async (msg) => {
+   if (msg.text === "📢 Barcha guruhlarga xabar yuborish") {
+     if (!ADMIN_IDS.includes(msg.from.id.toString()))
+       return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
 
-      broadcastAllMode = true;
-      return bot.sendMessage(
-        msg.chat.id,
-        "📢 Yuborayotgan xabaringiz barcha guruhlarga tarqatiladi."
-      );
-    }
+     broadcastAllMode = true;
+     return bot.sendMessage(
+       msg.chat.id,
+       "📢 Yuborayotgan xabaringiz barcha guruhlarga tarqatiladi."
+     );
+   }
 
-    if (broadcastAllMode) {
-      broadcastAllMode = false;
+   if (broadcastAllMode) {
+     broadcastAllMode = false;
 
-      const groups = await Group.find();
+     const groups = await Group.find();
 
-      for (const group of groups) {
-        try {
-          if (msg.text) await bot.sendMessage(group.chatId, msg.text);
-          if (msg.photo)
-            await bot.sendPhoto(
-              group.chatId,
-              msg.photo[msg.photo.length - 1].file_id
-            );
-        } catch (err) {
-          console.log("Xabar yuborishda xato:", err.message);
-        }
-      }
+     for (const group of groups) {
+       try {
+         // Text yuborish
+         if (msg.text) await sendWithRetry(group.chatId, msg.text, false);
 
-      return bot.sendMessage(msg.chat.id, "✅ Xabar yuborildi!");
-    }
-  });
+         // Rasm yuborish (oxirgi rasm)
+         if (msg.photo) {
+           const fileId = msg.photo[msg.photo.length - 1].file_id;
+           await sendWithRetry(group.chatId, fileId, true);
+         }
+       } catch (err) {
+         console.log("Xabar yuborishda xato:", err.message);
+       }
+     }
+
+     return bot.sendMessage(msg.chat.id, "✅ Xabar yuborildi!");
+   }
+ });
 };
