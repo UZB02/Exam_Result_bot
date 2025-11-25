@@ -47,21 +47,26 @@ module.exports = (bot) => {
   // -----------------------------------
   // 🔹 429 himoyalangan yuborish
   // -----------------------------------
-  async function sendWithRetry(chatId, content, isPhoto = false) {
-    try {
-      if (isPhoto) return await bot.sendPhoto(chatId, content);
-      else return await bot.sendMessage(chatId, content);
-    } catch (err) {
-      const retry = err?.response?.body?.parameters?.retry_after;
-      if (retry) {
-        console.log(`⏳ 429! ${retry} soniya kutilyapti...`);
-        await new Promise((res) => setTimeout(res, retry * 1000));
-        return await sendWithRetry(chatId, content, isPhoto);
-      }
-      console.error("TELEGRAM ERROR:", err?.response?.body || err);
-      throw err;
+async function sendWithRetry(chatId, content, caption = "", isPhoto = false) {
+  try {
+    if (isPhoto) {
+      return await bot.sendPhoto(chatId, content, {
+        caption: caption,
+      });
+    } else {
+      return await bot.sendMessage(chatId, content);
     }
+  } catch (err) {
+    const retry = err?.response?.body?.parameters?.retry_after;
+    if (retry) {
+      console.log(`⏳ 429! ${retry} soniya kutilyapti...`);
+      await new Promise((res) => setTimeout(res, retry * 1000));
+      return await sendWithRetry(chatId, content, caption, isPhoto);
+    }
+    console.error("TELEGRAM ERROR:", err?.response?.body || err);
+    throw err;
   }
+}
 
   // -----------------------------------
   // Inline tugmalarni chiroyli joylashtirish
