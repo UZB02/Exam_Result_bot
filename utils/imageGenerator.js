@@ -50,27 +50,31 @@ async function generateImageFromSheetData(sheetData) {
   // ===============================
   // ✅ TO‘G‘RI TARTIB RAQAM — COMPETITION RANKING
   // ===============================
-  let rank = 1;
-  let prevScore = null;
+let rank = 1;
+let duplicates = 1;
+let prevScore = null;
 
-  for (let i = 0; i < rows.length; i++) {
-    const score = parseFloat(rows[i][scoreIndex]);
+for (let i = 0; i < rows.length; i++) {
+  const score = parseFloat(rows[i][scoreIndex]);
 
-    if (i === 0) {
+  if (i === 0) {
+    rows[i][0] = rank;
+    prevScore = score;
+  } else {
+    if (score === prevScore) {
+      // 🔥 Teng ball → bir xil o‘rin
       rows[i][0] = rank;
-      prevScore = score;
+      duplicates++; // nechta tenglik borligini sanaymiz
     } else {
-      if (score === prevScore) {
-        // ✔ teng ball → bir xil raqam
-        rows[i][0] = rank;
-      } else {
-        // ✔ yangi o‘rin — index + 1
-        rank = i + 1;
-        rows[i][0] = rank;
-      }
-      prevScore = score;
+      // 🔥 Yangi o‘rin → oldingi o‘ringa bittalab qo‘shiladi
+      rank += 1; // faqat +1 qilamiz
+      rows[i][0] = rank;
+      duplicates = 1; // qayta boshlaymiz
     }
+
+    prevScore = score;
   }
+}
   // ===============================
 
   // 🔹 Eng yuqori ballni aniqlaymiz
