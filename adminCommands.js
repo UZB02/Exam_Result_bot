@@ -97,7 +97,7 @@ module.exports = (bot) => {
             sheetData,
             group.name
           );
-          await sendWithRetry(group.chatId, imagePath, true);
+          await sendWithRetry(group.chatId, imagePath,`${sheetData[0][0]}!`, true);
           await deleteImage(imagePath);
         } catch (err) {
           console.error("❌ XATOLIK:", err?.message);
