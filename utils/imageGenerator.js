@@ -48,21 +48,26 @@ async function generateImageFromSheetData(sheetData) {
   rows.sort((a, b) => parseFloat(b[scoreIndex]) - parseFloat(a[scoreIndex]));
 
   // 🔥 Avtomatik tartib raqam berish (№) — eng yuqori ball bir xil bo'lsa, raqam ham bir xil bo'ladi
-  let currentRank = 1;
-  for (let i = 0; i < rows.length; i++) {
-    if (i === 0) {
-      rows[i][0] = currentRank;
-    } else {
-      const prevScore = parseFloat(rows[i - 1][scoreIndex]);
-      const currentScore = parseFloat(rows[i][scoreIndex]);
-      if (currentScore === prevScore) {
-        rows[i][0] = currentRank;
-      } else {
-        currentRank = i + 1;
-        rows[i][0] = currentRank;
-      }
-    }
-  }
+ let currentRank = 1;
+ let prevRank = 0;
+
+ for (let i = 0; i < rows.length; i++) {
+   const currentScore = parseFloat(rows[i][scoreIndex]);
+
+   if (i === 0) {
+     rows[i][0] = currentRank;
+     prevRank = currentRank;
+   } else {
+     const prevScore = parseFloat(rows[i - 1][scoreIndex]);
+     if (currentScore === prevScore) {
+       rows[i][0] = prevRank; // teng ball — avvalgi o‘rin bilan bir xil
+     } else {
+       currentRank = prevRank + 1; // keyingi raqam oldingisidan 1 ko‘p
+       rows[i][0] = currentRank;
+       prevRank = currentRank;
+     }
+   }
+ }
 
   // 🔹 Eng yuqori ballni aniqlaymiz
   let maxScore = -Infinity;
