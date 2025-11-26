@@ -303,33 +303,35 @@ async function sendAnyMessage(bot, chatId, msg) {
     //   );
     // }
     // Bitta sinfga xabar yuborish
-    if (data.startsWith("message_")) {
-      const className = data.replace("message_", "");
-      const group = await Group.findOne({ name: className });
-      if (!group)
-        return bot.sendMessage(msg.chat.id, "❌ Bunday sinf topilmadi!");
+   if (data.startsWith("message_")) {
+     const className = data.replace("message_", "");
+     const group = await Group.findOne({ name: className });
 
-      if (!pendingMessage) {
-        return bot.sendMessage(
-          msg.chat.id,
-          "❌ Xabar hali saqlanmagan. Avval xabar yuboring."
-        );
-      }
-      if (pendingMessage.text)
-        await sendWithRetry(group.chatId, pendingMessage.text, false);
-      if (pendingMessage.photo) {
-        const fileId =
-          pendingMessage.photo[pendingMessage.photo.length - 1].file_id;
-        await sendWithRetry(group.chatId, fileId, true);
-      }
+     if (!group)
+       return bot.sendMessage(msg.chat.id, "❌ Bunday sinf topilmadi!");
 
-      pendingMessage = null;
+     if (!pendingMessage) {
+       return bot.sendMessage(
+         msg.chat.id,
+         "❌ Xabar hali saqlanmagan. Avval xabar yuboring."
+       );
+     }
 
-      return bot.sendMessage(
-        msg.chat.id,
-        `✅ Xabar *${group.name}* sinfiga yuborildi!`
-      );
-    }
+     // ❗ HAR QANDAY FORMATDAGI XABARNI NUSXA KO‘CHIRIB YUBORAMIZ
+     await bot.copyMessage(
+       group.chatId,
+       pendingMessage.chat.id,
+       pendingMessage.message_id
+     );
+
+     pendingMessage = null;
+
+     return bot.sendMessage(
+       msg.chat.id,
+       `✅ Xabar *${group.name}* sinfiga yuborildi!`
+     );
+   }
+
     await bot.answerCallbackQuery(callbackQuery.id);
   });
 };
