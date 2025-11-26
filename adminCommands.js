@@ -133,34 +133,35 @@ bot.on("message", async (msg) => {
   // -----------------------------------
   // 📢 Bitta sinfga xabar yuborish INLINE
   // -----------------------------------
- let pendingMessage = null;
+let pendingMessage = null;
 
- bot.on("message", async (msg) => {
-   // 1) Admin bosganda reset qilinadi
-   if (msg.text === "📢 Bitta sinfga xabar yuborish") {
-     if (!ADMIN_IDS.includes(msg.from.id.toString()))
-       return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
+bot.on("message", async (msg) => {
+  // 1) Admin tekshiruvi
+  if (msg.text === "📢 Bitta sinfga xabar yuborish") {
+    if (!ADMIN_IDS.includes(msg.from.id.toString()))
+      return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
 
-     pendingMessage = null;
-     return bot.sendMessage(
-       msg.chat.id,
-       "➡️ Endi yubormoqchi bo‘lgan xabaringizni yuboring (matn, rasm, video, hujjat — barchasi bo‘ladi):"
-     );
-   }
+    pendingMessage = null;
 
-   // 2) Agar hali xabar olinmagan bo‘lsa
-   if (!pendingMessage && msg.text !== "📢 Bitta sinfga xabar yuborish") {
-     // ❗ Har qanday turdagi xabarni olish uchun butun msg obyektini saqlaymiz
-     pendingMessage = msg;
+    return bot.sendMessage(
+      msg.chat.id,
+      "➡️ Endi yubormoqchi bo‘lgan xabaringizni yuboring:"
+    );
+  }
 
-     const groups = await Group.find();
-     const inlineKeyboard = buildInlineKeyboard(groups, "message", 3);
+  // 2) Agar pendingMessage hali yo‘q bo‘lsa — foydalanuvchi habar yubordi
+  if (!pendingMessage && msg.text !== "📢 Bitta sinfga xabar yuborish") {
+    // ❗HAR QANDAY FORMATNI SAQLAYMIZ — text bo'lishi shart emas!
+    pendingMessage = msg;
 
-     return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga yuborasiz?", {
-       reply_markup: { inline_keyboard: inlineKeyboard },
-     });
-   }
- });
+    const groups = await Group.find();
+    const inlineKeyboard = buildInlineKeyboard(groups, "message", 3);
+
+    return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga yuborasiz?", {
+      reply_markup: { inline_keyboard: inlineKeyboard },
+    });
+  }
+});
 
   // -----------------------------------
   // 📢 Barcha guruhlarga xabar yuborish
