@@ -8,13 +8,13 @@ const {
 
 // 🔥 Bir nechta adminlarni qo‘llab-quvvatlash
 const ADMIN_IDS = process.env.ADMIN_IDS
-  ? process.env.ADMIN_IDS.split(",").map((id) => id.trim())
+  ? process.env.ADMIN_IDS.split(" ").map((id) => id.trim())
   : [];
 
 module.exports = (bot) => {
-  //-----------------------------------
+  // -----------------------------------
   //   /start → Admin menyusi
-  //-----------------------------------
+  // -----------------------------------
   bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id.toString();
@@ -27,7 +27,7 @@ module.exports = (bot) => {
           reply_markup: {
             keyboard: [
               [{ text: "📤 Natijalarni yuborish" }],
-              [{ text: "📢 Barcha guruhlarga xabar yuborish" }], // 🔥 Yangi tugma
+              [{ text: "📢 Barcha guruhlarga xabar yuborish" }],
             ],
             resize_keyboard: true,
           },
@@ -38,49 +38,85 @@ module.exports = (bot) => {
     }
   });
 
-  //-----------------------------------
-  //  📤 Natijalarni yuborish (hamma sinfga)
-  //-----------------------------------
+  // -----------------------------------
+  //   /register (yangi sinf qo‘shish)
+  // -----------------------------------
+  bot.onText(/\/register (.+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const className = match[1];
+
+    if (!ADMIN_IDS.includes(msg.from.id.toString())) {
+      return bot.sendMessage(chatId, "❌ Siz admin emassiz!");
+    }
+
+    await Group.create({ name: className, chatId });
+    bot.sendMessage(chatId, `✅ ${className} sinfi ro‘yxatga olindi.`);
+  });
+
+  // -----------------------------------
+  // 📤 "Natijalarni yuborish" tugmasi
+  // -----------------------------------
   bot.on("message", (msg) => {
     if (msg.text === "📤 Natijalarni yuborish") {
-      const userId = msg.from.id.toString();
-
-      if (!ADMIN_IDS.includes(userId)) {
-        return bot.sendMessage(msg.chat.id, "Bu amal faqat admin uchun!");
+      if (!ADMIN_IDS.includes(msg.from.id.toString())) {
+        return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
       }
 
       bot.emit("send_results_command", msg);
     }
   });
 
+  // -----------------------------------
+  // 🔥 429 xatosiz yuborish funksiyasi
+  // -----------------------------------
+  async function sendWithRetry(chatId, imagePath, caption = "") {
+    try {
+      return await bot.sendPhoto(chatId, imagePath, { caption });
+    } catch (err) {
+      const retry = err?.response?.body?.parameters?.retry_after;
+
+      if (retry) {
+        console.log(`⏳ 429! ${retry} soniya kutilyapti...`);
+        await new Promise((res) => setTimeout(res, retry * 1000));
+        return await sendWithRetry(chatId, imagePath, caption);
+      }
+
+      console.error("TELEGRAM ERROR:", err?.response?.body || err);
+      throw err;
+    }
+  }
+
+  // -----------------------------------
+  // 🔥 Natijalarni barcha sinflarga yuborish
+  // -----------------------------------
   bot.on("send_results_command", async (msg) => {
     const userId = msg.from.id.toString();
 
     if (!ADMIN_IDS.includes(userId)) {
-      return bot.sendMessage(msg.chat.id, "Faqat admin yubora oladi!");
+      return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
     }
 
     const groups = await Group.find();
 
     for (const group of groups) {
       try {
+        console.log("📌 SINFDAN MA'LUMOT OLINYAPTI:", group.name);
+
         const sheetData = await getSheetData(group.name);
+        console.log("📌 GoogleSheetdan keldi:", sheetData?.length);
+
         const imagePath = await generateImageFromSheetData(
           sheetData,
           group.name
         );
+        console.log("📌 Rasm yaratildi:", imagePath);
 
-        await bot.sendPhoto(group.chatId, imagePath, {
-          caption: `📊 ${group.name} Assalomu alaykum hurmatli ota-onalar 1-chorak 15.11.2025 kungi haftalik imtihon natijalarimiz bilan tanishib olishingiz mumkin!  
-
- 🔴 Ballari qizil rang bilan belgilangan o'quvchilar fanlar bo'yicha sinfda eng yuqori ballni qo'lga kiritganlar.
-
-👨‍🏫 Barcha tengdoshlariga na'muna bo'lgan 1-o'rin soxibimizning ustozlariga hamda ota-onalariga o'z minnatdorchiligimizni bildiramiz!`,
-        });
+        // 🔥 Yangi: 429 dan himoyalangan yuborish
+        await sendWithRetry(group.chatId, imagePath, `📊 ${sheetData[0][0]}!`);
 
         await deleteImage(imagePath);
       } catch (err) {
-        console.error(err);
+        console.error("❌ XATOLIK:", err?.response?.body || err.message);
         await bot.sendMessage(
           group.chatId,
           "❌ Natijalarni yuborishda xatolik yuz berdi."
@@ -92,62 +128,40 @@ module.exports = (bot) => {
   });
 
   // ================================================================
-  // 🆕 Yangi funksiya: Admin barcha guruhlarga xohlanyan fayl/xabar yuboradi
+  // 📢 Barcha guruhlarga xabar/yuklama yuborish
   // ================================================================
   let broadcastMode = false;
 
   bot.on("message", async (msg) => {
     const userId = msg.from.id.toString();
 
-    // Tugma bosilganda broadcast rejim yoqiladi
     if (msg.text === "📢 Barcha guruhlarga xabar yuborish") {
       if (!ADMIN_IDS.includes(userId)) {
-        return bot.sendMessage(msg.chat.id, "Bu amal faqat admin uchun!");
+        return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
       }
 
       broadcastMode = true;
       return bot.sendMessage(
         msg.chat.id,
-        "📢 Yubormoqchi bo'lgan xabar yoki faylni yuboring.\n\n*Diqqat:* Bu xabar barcha guruhlarga ketadi!",
-        { parse_mode: "Markdown" }
+        "📢 Yubormoqchi bo'lgan xabar yoki faylni yuboring.\n\n⚠️ Diqqat: U barcha guruhlarga tarqatiladi!"
       );
     }
 
-    // Admin fayl yoki matn yuborsa → barcha guruhlarga tarqatiladi
     if (broadcastMode && ADMIN_IDS.includes(userId)) {
-      broadcastMode = false; // Bir martalik bo'lishi uchun
+      broadcastMode = false;
 
       const groups = await Group.find();
 
       for (const group of groups) {
         try {
-          // Agar rasm bo'lsa
           if (msg.photo) {
             const fileId = msg.photo[msg.photo.length - 1].file_id;
             await bot.sendPhoto(group.chatId, fileId, {
               caption: msg.caption || "",
             });
-          }
-          // Agar video bo'lsa
-          else if (msg.video) {
-            await bot.sendVideo(group.chatId, msg.video.file_id, {
-              caption: msg.caption || "",
-            });
-          }
-          // Agar hujjat (PDF, DOC, ZIP...) bo'lsa
-          else if (msg.document) {
+          } else if (msg.document) {
             await bot.sendDocument(group.chatId, msg.document.file_id);
-          }
-          // Agar audio
-          else if (msg.audio) {
-            await bot.sendAudio(group.chatId, msg.audio.file_id);
-          }
-          // Agar voice
-          else if (msg.voice) {
-            await bot.sendVoice(group.chatId, msg.voice.file_id);
-          }
-          // Oddiy matn bo‘lsa
-          else if (msg.text) {
+          } else if (msg.text) {
             await bot.sendMessage(group.chatId, msg.text);
           }
         } catch (err) {
@@ -161,8 +175,4 @@ module.exports = (bot) => {
       );
     }
   });
-};
-
-tbody{
-    text-align: center;
-}
+}; 

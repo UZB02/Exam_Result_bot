@@ -43,29 +43,44 @@ module.exports = (bot) => {
       bot.sendMessage(chatId, "Assalomu alaykum! Botga xush kelibsiz.");
     }
   });
+
+  // -----------------------------------
+  //   /register (yangi sinf qo‘shish)
+  // -----------------------------------
+  bot.onText(/\/register (.+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const className = match[1];
+
+    if (!ADMIN_IDS.includes(msg.from.id.toString())) {
+      return bot.sendMessage(chatId, "❌ Siz admin emassiz!");
+    }
+
+    await Group.create({ name: className, chatId });
+    bot.sendMessage(chatId, `✅ ${className} sinfi ro‘yxatga olindi.`);
+  });
   // -----------------------------------
   // 🔹 429 himoyalangan yuborish
   // -----------------------------------
-async function sendWithRetry(chatId, content, caption = "", isPhoto = false) {
-  try {
-    if (isPhoto) {
-      return await bot.sendPhoto(chatId, content, {
-        caption: caption,
-      });
-    } else {
-      return await bot.sendMessage(chatId, content);
+  async function sendWithRetry(chatId, content, caption = "", isPhoto = false) {
+    try {
+      if (isPhoto) {
+        return await bot.sendPhoto(chatId, content, {
+          caption: caption,
+        });
+      } else {
+        return await bot.sendMessage(chatId, content);
+      }
+    } catch (err) {
+      const retry = err?.response?.body?.parameters?.retry_after;
+      if (retry) {
+        console.log(`⏳ 429! ${retry} soniya kutilyapti...`);
+        await new Promise((res) => setTimeout(res, retry * 1000));
+        return await sendWithRetry(chatId, content, caption, isPhoto);
+      }
+      console.error("TELEGRAM ERROR:", err?.response?.body || err);
+      throw err;
     }
-  } catch (err) {
-    const retry = err?.response?.body?.parameters?.retry_after;
-    if (retry) {
-      console.log(`⏳ 429! ${retry} soniya kutilyapti...`);
-      await new Promise((res) => setTimeout(res, retry * 1000));
-      return await sendWithRetry(chatId, content, caption, isPhoto);
-    }
-    console.error("TELEGRAM ERROR:", err?.response?.body || err);
-    throw err;
   }
-}
   // -----------------------------------
   // Inline tugmalarni chiroyli joylashtirish
   // -----------------------------------
@@ -85,70 +100,70 @@ async function sendWithRetry(chatId, content, caption = "", isPhoto = false) {
   // -----------------------------------
   // 📤 Barcha sinflarga natija yuborish
   // -----------------------------------
-bot.on("message", async (msg) => {
-  if (msg.text === "📤 Barcha sinflarga natija yuborish") {
-    if (!ADMIN_IDS.includes(msg.from.id.toString()))
-      return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
-    const groups = await Group.find();
-    for (const group of groups) {
-      try {
-        const sheetData = await getSheetData(group.name);
-        const imagePath = await generateImageFromSheetData(
-          sheetData,
-          group.name
-        );
-        await sendWithRetry(
-          group.chatId,
-          imagePath,
-          `${sheetData[0][0]}!`,
-          true
-        );
-        await deleteImage(imagePath);
-      } catch (err) {
-        console.error("❌ XATOLIK:", err?.message);
+  bot.on("message", async (msg) => {
+    if (msg.text === "📤 Barcha sinflarga natija yuborish") {
+      if (!ADMIN_IDS.includes(msg.from.id.toString()))
+        return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
+      const groups = await Group.find();
+      for (const group of groups) {
+        try {
+          const sheetData = await getSheetData(group.name);
+          const imagePath = await generateImageFromSheetData(
+            sheetData,
+            group.name
+          );
+          await sendWithRetry(
+            group.chatId,
+            imagePath,
+            `${sheetData[0][0]}!`,
+            true
+          );
+          await deleteImage(imagePath);
+        } catch (err) {
+          console.error("❌ XATOLIK:", err?.message);
+        }
       }
+      return bot.sendMessage(
+        msg.chat.id,
+        "✅ Barcha sinflarga natijalar yuborildi!"
+      );
     }
-    return bot.sendMessage(
-      msg.chat.id,
-      "✅ Barcha sinflarga natijalar yuborildi!"
-    );
-  }
-});
+  });
   // -----------------------------------
   // 📢 Bitta sinfga xabar yuborish INLINE
   // -----------------------------------
-let pendingMessage = null;
+  let pendingMessage = null;
 
-bot.on("message", async (msg) => {
-  // 1) Admin tekshiruvi
-  if (msg.text === "📢 Bitta sinfga xabar yuborish") {
-    if (!ADMIN_IDS.includes(msg.from.id.toString()))
-      return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
+  bot.on("message", async (msg) => {
+    // 1) Admin tekshiruvi
+    if (msg.text === "📢 Bitta sinfga xabar yuborish") {
+      if (!ADMIN_IDS.includes(msg.from.id.toString()))
+        return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
 
-    pendingMessage = null;
+      pendingMessage = null;
 
-    return bot.sendMessage(
-      msg.chat.id,
-      "➡️ Endi yubormoqchi bo‘lgan xabaringizni yuboring:"
-    );
-  }
+      return bot.sendMessage(
+        msg.chat.id,
+        "➡️ Endi yubormoqchi bo‘lgan xabaringizni yuboring:"
+      );
+    }
 
-  // 2) Xabar faqat ADMIN va faqat PRIVATE CHATdan bo‘lsa qabul qilamiz
-  if (
-    !pendingMessage &&
-    msg.chat.type === "private" && // ❗ tugmalar guruhga chiqmasligi uchun
-    ADMIN_IDS.includes(msg.from.id.toString())
-  ) {
-    pendingMessage = msg;
+    // 2) Xabar faqat ADMIN va faqat PRIVATE CHATdan bo‘lsa qabul qilamiz
+    if (
+      !pendingMessage &&
+      msg.chat.type === "private" && // ❗ tugmalar guruhga chiqmasligi uchun
+      ADMIN_IDS.includes(msg.from.id.toString())
+    ) {
+      pendingMessage = msg;
 
-    const groups = await Group.find();
-    const inlineKeyboard = buildInlineKeyboard(groups, "message", 3);
+      const groups = await Group.find();
+      const inlineKeyboard = buildInlineKeyboard(groups, "message", 3);
 
-    return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga yuborasiz?", {
-      reply_markup: { inline_keyboard: inlineKeyboard },
-    });
-  }
-});
+      return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga yuborasiz?", {
+        reply_markup: { inline_keyboard: inlineKeyboard },
+      });
+    }
+  });
 
   // -----------------------------------
   // 📢 Barcha guruhlarga xabar yuborish
@@ -186,78 +201,80 @@ bot.on("message", async (msg) => {
       );
     }
   });
-async function sendAnyMessage(bot, chatId, msg) {
-  // TEXT
-  if (msg.text) return bot.sendMessage(chatId, msg.text);
+  async function sendAnyMessage(bot, chatId, msg) {
+    // TEXT
+    if (msg.text) return bot.sendMessage(chatId, msg.text);
 
-  // PHOTO
-  if (msg.photo)
-    return bot.sendPhoto(chatId, msg.photo[msg.photo.length - 1].file_id, {
-      caption: msg.caption || "",
-    });
+    // PHOTO
+    if (msg.photo)
+      return bot.sendPhoto(chatId, msg.photo[msg.photo.length - 1].file_id, {
+        caption: msg.caption || "",
+      });
 
-  // VIDEO
-  if (msg.video)
-    return bot.sendVideo(chatId, msg.video.file_id, {
-      caption: msg.caption || "",
-    });
+    // VIDEO
+    if (msg.video)
+      return bot.sendVideo(chatId, msg.video.file_id, {
+        caption: msg.caption || "",
+      });
 
-  // DOCUMENT
-  if (msg.document)
-    return bot.sendDocument(chatId, msg.document.file_id, {
-      caption: msg.caption || "",
-    });
+    // DOCUMENT
+    if (msg.document)
+      return bot.sendDocument(chatId, msg.document.file_id, {
+        caption: msg.caption || "",
+      });
 
-  // AUDIO
-  if (msg.audio)
-    return bot.sendAudio(chatId, msg.audio.file_id, {
-      caption: msg.caption || "",
-    });
+    // AUDIO
+    if (msg.audio)
+      return bot.sendAudio(chatId, msg.audio.file_id, {
+        caption: msg.caption || "",
+      });
 
-  // VOICE
-  if (msg.voice) return bot.sendVoice(chatId, msg.voice.file_id);
+    // VOICE
+    if (msg.voice) return bot.sendVoice(chatId, msg.voice.file_id);
 
-  // VIDEO NOTE
-  if (msg.video_note) return bot.sendVideoNote(chatId, msg.video_note.file_id);
+    // VIDEO NOTE
+    if (msg.video_note)
+      return bot.sendVideoNote(chatId, msg.video_note.file_id);
 
-  // ANIMATION (GIF)
-  if (msg.animation)
-    return bot.sendAnimation(chatId, msg.animation.file_id, {
-      caption: msg.caption || "",
-    });
+    // ANIMATION (GIF)
+    if (msg.animation)
+      return bot.sendAnimation(chatId, msg.animation.file_id, {
+        caption: msg.caption || "",
+      });
 
-  // STICKER
-  if (msg.sticker) return bot.sendSticker(chatId, msg.sticker.file_id);
+    // STICKER
+    if (msg.sticker) return bot.sendSticker(chatId, msg.sticker.file_id);
 
-  // CONTACT
-  if (msg.contact)
-    return bot.sendContact(
-      chatId,
-      msg.contact.phone_number,
-      msg.contact.first_name
-    );
+    // CONTACT
+    if (msg.contact)
+      return bot.sendContact(
+        chatId,
+        msg.contact.phone_number,
+        msg.contact.first_name
+      );
 
-  // LOCATION
-  if (msg.location)
-    return bot.sendLocation(
-      chatId,
-      msg.location.latitude,
-      msg.location.longitude
-    );
+    // LOCATION
+    if (msg.location)
+      return bot.sendLocation(
+        chatId,
+        msg.location.latitude,
+        msg.location.longitude
+      );
 
-  // POLL — forward bo‘lmaydi → qayta yubora olmaymiz
-  if (msg.poll)
-    return bot.sendMessage(
-      chatId,
-      "⚠ Ushbu formatni qayta yuborib bo‘lmaydi (poll)."
-    );
+    // POLL — forward bo‘lmaydi → qayta yubora olmaymiz
+    if (msg.poll)
+      return bot.sendMessage(
+        chatId,
+        "⚠ Ushbu formatni qayta yuborib bo‘lmaydi (poll)."
+      );
 
-  // DICE
-  if (msg.dice) return bot.sendDice(chatId, { emoji: msg.dice.emoji || "🎲" });
+    // DICE
+    if (msg.dice)
+      return bot.sendDice(chatId, { emoji: msg.dice.emoji || "🎲" });
 
-  // DEFAULT
-  return bot.sendMessage(chatId, "⚠ Ushbu format qo‘llab-quvvatlanmaydi.");
-}
+    // DEFAULT
+    return bot.sendMessage(chatId, "⚠ Ushbu format qo‘llab-quvvatlanmaydi.");
+  }
 
   // -----------------------------------
   // CALLBACK QUERY HANDLING
@@ -273,29 +290,29 @@ async function sendAnyMessage(bot, chatId, msg) {
       });
     }
     // Bitta sinfga xabar yuborish
-   if (data.startsWith("message_")) {
-     const className = data.replace("message_", "");
-     const group = await Group.findOne({ name: className });
-     if (!group)
-       return bot.sendMessage(msg.chat.id, "❌ Bunday sinf topilmadi!");
-     if (!pendingMessage) {
-       return bot.sendMessage(
-         msg.chat.id,
-         "❌ Xabar hali saqlanmagan. Avval xabar yuboring."
-       );
-     }
-     // ❗ HAR QANDAY FORMATDAGI XABARNI NUSXA KO‘CHIRIB YUBORAMIZ
-     await bot.copyMessage(
-       group.chatId,
-       pendingMessage.chat.id,
-       pendingMessage.message_id
-     );
-     pendingMessage = null;
-     return bot.sendMessage(
-       msg.chat.id,
-       `✅ Xabar *${group.name}* sinfiga yuborildi!`
-     );
-   }
+    if (data.startsWith("message_")) {
+      const className = data.replace("message_", "");
+      const group = await Group.findOne({ name: className });
+      if (!group)
+        return bot.sendMessage(msg.chat.id, "❌ Bunday sinf topilmadi!");
+      if (!pendingMessage) {
+        return bot.sendMessage(
+          msg.chat.id,
+          "❌ Xabar hali saqlanmagan. Avval xabar yuboring."
+        );
+      }
+      // ❗ HAR QANDAY FORMATDAGI XABARNI NUSXA KO‘CHIRIB YUBORAMIZ
+      await bot.copyMessage(
+        group.chatId,
+        pendingMessage.chat.id,
+        pendingMessage.message_id
+      );
+      pendingMessage = null;
+      return bot.sendMessage(
+        msg.chat.id,
+        `✅ Xabar *${group.name}* sinfiga yuborildi!`
+      );
+    }
     await bot.answerCallbackQuery(callbackQuery.id);
   });
 };
