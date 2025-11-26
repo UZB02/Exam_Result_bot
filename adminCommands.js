@@ -133,34 +133,35 @@ bot.on("message", async (msg) => {
   // -----------------------------------
   // 📢 Bitta sinfga xabar yuborish INLINE
   // -----------------------------------
-  let pendingMessage = null;
+ let pendingMessage = null;
 
-  bot.on("message", async (msg) => {
-    if (msg.text === "📢 Bitta sinfga xabar yuborish") {
-      if (!ADMIN_IDS.includes(msg.from.id.toString()))
-        return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
+ bot.on("message", async (msg) => {
+   // 1) Admin bosganda reset qilinadi
+   if (msg.text === "📢 Bitta sinfga xabar yuborish") {
+     if (!ADMIN_IDS.includes(msg.from.id.toString()))
+       return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
 
-      pendingMessage = null;
-      return bot.sendMessage(
-        msg.chat.id,
-        "➡️ Endi yubormoqchi bo‘lgan xabaringizni yuboring:"
-      );
-    }
+     pendingMessage = null;
+     return bot.sendMessage(
+       msg.chat.id,
+       "➡️ Endi yubormoqchi bo‘lgan xabaringizni yuboring (matn, rasm, video, hujjat — barchasi bo‘ladi):"
+     );
+   }
 
-    if (
-      !pendingMessage &&
-      msg.text &&
-      msg.text !== "📢 Bitta sinfga xabar yuborish"
-    ) {
-      pendingMessage = msg;
-      const groups = await Group.find();
-      const inlineKeyboard = buildInlineKeyboard(groups, "message", 3);
+   // 2) Agar hali xabar olinmagan bo‘lsa
+   if (!pendingMessage && msg.text !== "📢 Bitta sinfga xabar yuborish") {
+     // ❗ Har qanday turdagi xabarni olish uchun butun msg obyektini saqlaymiz
+     pendingMessage = msg;
 
-      return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga yuborasiz?", {
-        reply_markup: { inline_keyboard: inlineKeyboard },
-      });
-    }
-  });
+     const groups = await Group.find();
+     const inlineKeyboard = buildInlineKeyboard(groups, "message", 3);
+
+     return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga yuborasiz?", {
+       reply_markup: { inline_keyboard: inlineKeyboard },
+     });
+   }
+ });
+
   // -----------------------------------
   // 📢 Barcha guruhlarga xabar yuborish
   // -----------------------------------
@@ -170,33 +171,106 @@ bot.on("message", async (msg) => {
     if (msg.text === "📢 Barcha guruhlarga xabar yuborish") {
       if (!ADMIN_IDS.includes(msg.from.id.toString()))
         return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
+
       broadcastAllMode = true;
       return bot.sendMessage(
         msg.chat.id,
-        "📢 Yuborayotgan xabaringiz barcha guruhlarga tarqatiladi."
+        "📢 Endi yubormoqchi bo‘lgan xabaringizni yuboring (har qanday format bo‘ladi):"
       );
     }
+
     if (broadcastAllMode) {
       broadcastAllMode = false;
 
       const groups = await Group.find();
+
       for (const group of groups) {
         try {
-          // Text yuborish
-          if (msg.text) await sendWithRetry(group.chatId, msg.text, false);
-          // Rasm yuborish
-          if (msg.photo) {
-            const fileId = msg.photo[msg.photo.length - 1].file_id;
-            await sendWithRetry(group.chatId, fileId, true);
-          }
+          await sendAnyMessage(bot, group.chatId, msg);
         } catch (err) {
           console.log("Xabar yuborishda xato:", err.message);
         }
       }
 
-      return bot.sendMessage(msg.chat.id, "✅ Xabar yuborildi!");
+      return bot.sendMessage(
+        msg.chat.id,
+        "✅ Xabar barcha guruhlarga yuborildi!"
+      );
     }
   });
+async function sendAnyMessage(bot, chatId, msg) {
+  // TEXT
+  if (msg.text) return bot.sendMessage(chatId, msg.text);
+
+  // PHOTO
+  if (msg.photo)
+    return bot.sendPhoto(chatId, msg.photo[msg.photo.length - 1].file_id, {
+      caption: msg.caption || "",
+    });
+
+  // VIDEO
+  if (msg.video)
+    return bot.sendVideo(chatId, msg.video.file_id, {
+      caption: msg.caption || "",
+    });
+
+  // DOCUMENT
+  if (msg.document)
+    return bot.sendDocument(chatId, msg.document.file_id, {
+      caption: msg.caption || "",
+    });
+
+  // AUDIO
+  if (msg.audio)
+    return bot.sendAudio(chatId, msg.audio.file_id, {
+      caption: msg.caption || "",
+    });
+
+  // VOICE
+  if (msg.voice) return bot.sendVoice(chatId, msg.voice.file_id);
+
+  // VIDEO NOTE
+  if (msg.video_note) return bot.sendVideoNote(chatId, msg.video_note.file_id);
+
+  // ANIMATION (GIF)
+  if (msg.animation)
+    return bot.sendAnimation(chatId, msg.animation.file_id, {
+      caption: msg.caption || "",
+    });
+
+  // STICKER
+  if (msg.sticker) return bot.sendSticker(chatId, msg.sticker.file_id);
+
+  // CONTACT
+  if (msg.contact)
+    return bot.sendContact(
+      chatId,
+      msg.contact.phone_number,
+      msg.contact.first_name
+    );
+
+  // LOCATION
+  if (msg.location)
+    return bot.sendLocation(
+      chatId,
+      msg.location.latitude,
+      msg.location.longitude
+    );
+
+  // POLL — forward bo‘lmaydi → qayta yubora olmaymiz
+  if (msg.poll)
+    return bot.sendMessage(
+      chatId,
+      "⚠ Ushbu formatni qayta yuborib bo‘lmaydi (poll)."
+    );
+
+  // DICE
+  if (msg.dice) return bot.sendDice(chatId, { emoji: msg.dice.emoji || "🎲" });
+
+  // DEFAULT
+  return bot.sendMessage(chatId, "⚠ Ushbu format qo‘llab-quvvatlanmaydi.");
+}
+
   // -----------------------------------
   // CALLBACK QUERY HANDLING
   // -----------------------------------
