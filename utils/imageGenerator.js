@@ -8,7 +8,7 @@ function calculateDynamicColumnWidths(
   ctx,
   header,
   rows,
-  minWidth = 120,
+  minWidth = 100,
   padding = 30
 ) {
   const colWidths = [];
@@ -24,15 +24,7 @@ function calculateDynamicColumnWidths(
     ctx.font = "22px Arial";
     const textWidth = ctx.measureText(maxText).width;
 
-    // Standart width
-    let w = Math.max(minWidth, textWidth + padding);
-
-    // 🔥 % ustuni uchun maxsus kenglik
-    if (header[c] === "%" && w < 80) {
-      w = 80; // kamida 80px bo‘lsin
-    }
-
-    colWidths[c] = w;
+    colWidths[c] = Math.max(minWidth, textWidth + padding);
   }
 
   return colWidths;
@@ -45,7 +37,7 @@ async function generateImageFromSheetData(sheetData) {
   if (!Array.isArray(sheetData) || sheetData.length < 2) {
     throw new Error("❌ sheetData formati noto‘g‘ri.");
   }
-
+console.log(sheetData);
   // MA'LUMOTLARNI AJRATAMIZ
   const className = sheetData[0][0];
   const header = sheetData[1];
