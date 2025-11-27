@@ -8,7 +8,7 @@ function calculateDynamicColumnWidths(
   ctx,
   header,
   rows,
-  minWidth = 100,
+  minWidth = 120,
   padding = 30
 ) {
   const colWidths = [];
