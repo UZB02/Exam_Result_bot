@@ -37,7 +37,6 @@ async function generateImageFromSheetData(sheetData) {
   if (!Array.isArray(sheetData) || sheetData.length < 2) {
     throw new Error("❌ sheetData formati noto‘g‘ri.");
   }
-console.log(sheetData);
   // MA'LUMOTLARNI AJRATAMIZ
   const className = sheetData[0][0];
   const header = sheetData[1];
