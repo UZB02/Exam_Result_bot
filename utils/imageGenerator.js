@@ -24,7 +24,15 @@ function calculateDynamicColumnWidths(
     ctx.font = "22px Arial";
     const textWidth = ctx.measureText(maxText).width;
 
-    colWidths[c] = Math.max(minWidth, textWidth + padding);
+    // Standart width
+    let w = Math.max(minWidth, textWidth + padding);
+
+    // 🔥 % ustuni uchun maxsus kenglik
+    if (header[c] === "%" && w < 80) {
+      w = 80; // kamida 80px bo‘lsin
+    }
+
+    colWidths[c] = w;
   }
 
   return colWidths;
@@ -76,7 +84,6 @@ for (let i = 0; i < rows.length; i++) {
   }
 }
   // ===============================
-
   // 🔹 Eng yuqori ballni aniqlaymiz
   let maxScore = -Infinity;
   rows.forEach((r) => {
