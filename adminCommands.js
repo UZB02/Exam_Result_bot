@@ -132,38 +132,85 @@ module.exports = (bot) => {
   // -----------------------------------
   // 📢 Bitta sinfga xabar yuborish INLINE
   // -----------------------------------
-  let pendingMessage = null;
+ let singleBroadcastMode = false; // Bitta sinfga yuborish rejimini tekshirish uchun
+let pendingMessage = null;
 
-  bot.on("message", async (msg) => {
-    // 1) Admin tekshiruvi
-    if (msg.text === "📢 Bitta sinfga xabar yuborish") {
-      if (!ADMIN_IDS.includes(msg.from.id.toString()))
-        return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
+bot.on("message", async (msg) => {
+  const userId = msg.from.id.toString();
 
-      pendingMessage = null;
+  // 1) Tugma bosilganda rejimni yoqish
+  if (msg.text === "📢 Bitta sinfga xabar yuborish") {
+    if (!ADMIN_IDS.includes(userId)) {
+      return bot.sendMessage(msg.chat.id, "❌ Siz admin emassiz!");
+    }
 
-      return bot.sendMessage(
-        msg.chat.id,
-        "➡️ Endi yubormoqchi bo‘lgan xabaringizni yuboring:"
+    singleBroadcastMode = true; // Rejim yoqildi
+    pendingMessage = null;
+
+    return bot.sendMessage(
+      msg.chat.id,
+      "➡️ Endi yubormoqchi bo‘lgan xabaringizni yuboring (rasm, video yoki matn):"
+    );
+  }
+
+  // 2) Xabarni qabul qilish va sinflar ro'yxatini chiqarish
+  if (singleBroadcastMode && ADMIN_IDS.includes(userId)) {
+    singleBroadcastMode = false; // Rejimni o'chiramiz
+    pendingMessage = msg; // Xabarni saqlab qo'yamiz
+
+    const groups = await Group.find();
+    
+    // Agar guruhlar topilmasa
+    if (groups.length === 0) {
+        return bot.sendMessage(msg.chat.id, "❌ Hali birorta ham guruh qo'shilmagan.");
+    }
+
+    const inlineKeyboard = buildInlineKeyboard(groups, "message", 3);
+
+    return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga yuborasiz?", {
+      reply_markup: { inline_keyboard: inlineKeyboard },
+    });
+  }
+});
+
+// 3) Callback Query qismi (Tugma bosilganda yuborish)
+bot.on("callback_query", async (callbackQuery) => {
+  const msg = callbackQuery.message;
+  const data = callbackQuery.data;
+  const adminId = callbackQuery.from.id.toString();
+
+  if (data.startsWith("message_")) {
+    if (!ADMIN_IDS.includes(adminId)) return;
+
+    const className = data.replace("message_", "");
+    const group = await Group.findOne({ name: className });
+
+    if (!group) {
+      return bot.answerCallbackQuery(callbackQuery.id, { text: "❌ Sinf topilmadi!" });
+    }
+
+    if (!pendingMessage) {
+      return bot.sendMessage(msg.chat.id, "❌ Xabar topilmadi, iltimos qaytadan yuboring.");
+    }
+
+    try {
+      // ❗ MUHIM: copyMessage barcha formatlarni (caption, bold, link) saqlaydi
+      await bot.copyMessage(
+        group.chatId, 
+        pendingMessage.chat.id, 
+        pendingMessage.message_id
       );
+
+      await bot.answerCallbackQuery(callbackQuery.id, { text: "Yuborildi!" });
+      await bot.sendMessage(msg.chat.id, `✅ Xabar *${group.name}* sinfiga muvaffaqiyatli yuborildi!`, { parse_mode: "Markdown" });
+      
+      pendingMessage = null; // Yuborilgandan keyin xabarni tozalaymiz
+    } catch (err) {
+      console.error("Yuborishda xato:", err);
+      bot.sendMessage(msg.chat.id, "❌ Xabar yuborishda xatolik yuz berdi.");
     }
-
-    // 2) Xabar faqat ADMIN va faqat PRIVATE CHATdan bo‘lsa qabul qilamiz
-    if (
-      !pendingMessage &&
-      msg.chat.type === "private" && // ❗ tugmalar guruhga chiqmasligi uchun
-      ADMIN_IDS.includes(msg.from.id.toString())
-    ) {
-      pendingMessage = msg;
-
-      const groups = await Group.find();
-      const inlineKeyboard = buildInlineKeyboard(groups, "message", 3);
-
-      return bot.sendMessage(msg.chat.id, "📝 Qaysi sinfga yuborasiz?", {
-        reply_markup: { inline_keyboard: inlineKeyboard },
-      });
-    }
-  });
+  }
+});
 
   // -----------------------------------
   // 📢 Barcha guruhlarga xabar yuborish
