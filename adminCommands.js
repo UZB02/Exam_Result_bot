@@ -182,99 +182,37 @@ module.exports = (bot) => {
       );
     }
 
-    if (broadcastAllMode) {
+ if (broadcastAllMode) {
       broadcastAllMode = false;
 
       const groups = await Group.find();
 
       for (const group of groups) {
         try {
-          await sendAnyMessage(bot, group.chatId, msg);
+          // Bu yerda msg — admin yuborgan o'sha rasm/video/matn
+          await bot.copyMessage(group.chatId, msg.chat.id, msg.message_id);
         } catch (err) {
-          console.log("Xabar yuborishda xato:", err.message);
+          console.log(`${group.chatId} ga yuborishda xato:`, err.message);
         }
       }
 
       return bot.sendMessage(
         msg.chat.id,
-        "✅ Xabar barcha guruhlarga yuborildi!"
+        "✅ Xabar barcha guruhlarga asl formatida yuborildi!"
       );
     }
   });
-  async function sendAnyMessage(bot, chatId, msg) {
-    // TEXT
-    if (msg.text) return bot.sendMessage(chatId, msg.text);
-
-    // PHOTO
-    if (msg.photo)
-      return bot.sendPhoto(chatId, msg.photo[msg.photo.length - 1].file_id, {
-        caption: msg.caption || "",
-      });
-
-    // VIDEO
-    if (msg.video)
-      return bot.sendVideo(chatId, msg.video.file_id, {
-        caption: msg.caption || "",
-      });
-
-    // DOCUMENT
-    if (msg.document)
-      return bot.sendDocument(chatId, msg.document.file_id, {
-        caption: msg.caption || "",
-      });
-
-    // AUDIO
-    if (msg.audio)
-      return bot.sendAudio(chatId, msg.audio.file_id, {
-        caption: msg.caption || "",
-      });
-
-    // VOICE
-    if (msg.voice) return bot.sendVoice(chatId, msg.voice.file_id);
-
-    // VIDEO NOTE
-    if (msg.video_note)
-      return bot.sendVideoNote(chatId, msg.video_note.file_id);
-
-    // ANIMATION (GIF)
-    if (msg.animation)
-      return bot.sendAnimation(chatId, msg.animation.file_id, {
-        caption: msg.caption || "",
-      });
-
-    // STICKER
-    if (msg.sticker) return bot.sendSticker(chatId, msg.sticker.file_id);
-
-    // CONTACT
-    if (msg.contact)
-      return bot.sendContact(
-        chatId,
-        msg.contact.phone_number,
-        msg.contact.first_name
-      );
-
-    // LOCATION
-    if (msg.location)
-      return bot.sendLocation(
-        chatId,
-        msg.location.latitude,
-        msg.location.longitude
-      );
-
-    // POLL — forward bo‘lmaydi → qayta yubora olmaymiz
-    if (msg.poll)
-      return bot.sendMessage(
-        chatId,
-        "⚠ Ushbu formatni qayta yuborib bo‘lmaydi (poll)."
-      );
-
-    // DICE
-    if (msg.dice)
-      return bot.sendDice(chatId, { emoji: msg.dice.emoji || "🎲" });
-
-    // DEFAULT
-    return bot.sendMessage(chatId, "⚠ Ushbu format qo‘llab-quvvatlanmaydi.");
+// Eski sendAnyMessage funksiyasini mana bu bilan almashtiring yoki shunchaki copyMessage ishlatib ketavering
+async function sendAnyMessage(bot, chatId, msg) {
+  try {
+    // copyMessage xabarni hamma formati (bold, italic, link) bilan ko'chirib beradi
+    return await bot.copyMessage(chatId, msg.chat.id, msg.message_id);
+  } catch (err) {
+    console.error("Xabar nusxalashda xato:", err.message);
+    // Agar xabar copy qilib bo'lmaydigan bo'lsa (masalan, Poll), oddiy xabar yuboradi
+    return bot.sendMessage(chatId, "⚠ Ushbu xabarni yuborib bo'lmadi.");
   }
+}
 
   // -----------------------------------
   // CALLBACK QUERY HANDLING
